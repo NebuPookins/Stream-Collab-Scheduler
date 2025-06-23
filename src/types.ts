@@ -1,0 +1,38 @@
+export interface AskRecord {
+  partnerId: string;
+  askedOn: Date;
+  response?: string;
+  confirmed: boolean;
+}
+
+export interface Game {
+  id: string;
+  name: string;
+  deadline?: Date;
+  steamId?: string;
+  manualMetadata?: { coverUrl?: string; officialName?: string; [key: string]: any };
+  desiredPartners: number;
+  asks: AskRecord[];
+  tags?: string[];
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  lastStreamedWith?: Date;
+  schedule?: string;
+  busyUntil?: Date;
+  genrePreferences?: string[];
+}
+
+export interface Settings {
+  greyThresholdDays: number;
+  viewMode: "calendar" | "list";
+  darkMode: boolean;
+}
+
+export interface Store {
+  games: Game[];
+  partners: Partner[];
+  settings: Settings;
+}

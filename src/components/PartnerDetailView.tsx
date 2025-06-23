@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
+import { useAutosave } from '../hooks/useAutosave';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import DatePicker from 'react-datepicker';
@@ -19,11 +20,15 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const [lastStreamedWith, setLastStreamedWith] = useState<Date|undefined>(partner.lastStreamedWith);
   const [busyUntil, setBusyUntil] = useState<Date|undefined>(partner.busyUntil);
   const [schedule, setSchedule] = useState(partner.schedule||'');
-  const save = () => {
+
+  const memoizedSave = useCallback(() => {
     const updated = { ...partner, name, lastStreamedWith, busyUntil, schedule };
     const arr = [...store.partners]; arr[idx] = updated;
     setStore({ ...store, partners: arr });
-  };
+  }, [store, setStore, partner, idx, name, lastStreamedWith, busyUntil, schedule]);
+
+  const immediateSave = useAutosave(memoizedSave, [name, lastStreamedWith, busyUntil, schedule]);
+
   // Build calendar events
   const events = store.games.flatMap(g =>
     g.asks.filter(a => a.partnerId === id).map(a => ({ title: g.name + (a.confirmed ? ' ✓' : ''), date: a.askedOn.toISOString().split('T')[0] }))
@@ -36,21 +41,20 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       <h2>Partner Details</h2>
       <div className="mb-3">
         <label className="form-label">Name</label>
-        <input className="form-control" value={name} onChange={e=>setName(e.target.value)} />
+        <input className="form-control" value={name} onChange={e=>setName(e.target.value)} onBlur={immediateSave} />
       </div>
       <div className="mb-3">
         <label className="form-label">Last Streamed With</label>
-        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
+        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} onBlur={immediateSave} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
       <div className="mb-3">
         <label className="form-label">Schedule</label>
-        <input className="form-control" value={schedule} onChange={e=>setSchedule(e.target.value)} />
+        <input className="form-control" value={schedule} onChange={e=>setSchedule(e.target.value)} onBlur={immediateSave} />
       </div>
       <div className="mb-3">
         <label className="form-label">Busy Until</label>
-        <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
+        <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} onBlur={immediateSave} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
-      <button className="btn btn-primary mb-3" onClick={save}>Save</button>
       <FullCalendar
         plugins={[dayGridPlugin, listPlugin]}
         initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listMonth'}

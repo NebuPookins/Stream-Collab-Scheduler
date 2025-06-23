@@ -20,14 +20,18 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const [lastStreamedWith, setLastStreamedWith] = useState<Date|undefined>(partner.lastStreamedWith);
   const [busyUntil, setBusyUntil] = useState<Date|undefined>(partner.busyUntil);
   const [schedule, setSchedule] = useState(partner.schedule||'');
+  const [lovesTags, setLovesTags] = useState<string[]>(partner.lovesTags || []);
+  const [hatesTags, setHatesTags] = useState<string[]>(partner.hatesTags || []);
+  const [newLovesTagInput, setNewLovesTagInput] = useState('');
+  const [newHatesTagInput, setNewHatesTagInput] = useState('');
 
   const memoizedSave = useCallback(() => {
-    const updated = { ...partner, name, lastStreamedWith, busyUntil, schedule };
+    const updated = { ...partner, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags };
     const arr = [...store.partners]; arr[idx] = updated;
     setStore({ ...store, partners: arr });
-  }, [store, setStore, partner, idx, name, lastStreamedWith, busyUntil, schedule]);
+  }, [store, setStore, partner, idx, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
 
-  const immediateSave = useAutosave(memoizedSave, [name, lastStreamedWith, busyUntil, schedule]);
+  const immediateSave = useAutosave(memoizedSave, [name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
 
   // Build calendar events
   const events = store.games.flatMap(g =>
@@ -35,6 +39,28 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   );
   if (lastStreamedWith) events.push({ title: 'Last Stream', date: lastStreamedWith.toISOString().split('T')[0] });
   if (busyUntil) events.push({ title: 'Busy', date: busyUntil.toISOString().split('T')[0] });
+
+  const addTag = (type: 'loves' | 'hates') => {
+    if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {
+      setLovesTags([...lovesTags, newLovesTagInput]);
+      setNewLovesTagInput('');
+      immediateSave();
+    } else if (type === 'hates' && newHatesTagInput && !hatesTags.includes(newHatesTagInput)) {
+      setHatesTags([...hatesTags, newHatesTagInput]);
+      setNewHatesTagInput('');
+      immediateSave();
+    }
+  };
+
+  const removeTag = (type: 'loves' | 'hates', tagToRemove: string) => {
+    if (type === 'loves') {
+      setLovesTags(lovesTags.filter(tag => tag !== tagToRemove));
+    } else {
+      setHatesTags(hatesTags.filter(tag => tag !== tagToRemove));
+    }
+    immediateSave();
+  };
+
   return (
     <div>
       <button className="btn btn-link" onClick={()=>navigate(-1)}>Back</button>
@@ -55,6 +81,55 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         <label className="form-label">Busy Until</label>
         <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} onBlur={immediateSave} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
+
+      {/* Loves Tags */}
+      <div className="mb-3">
+        <label className="form-label">Loves Tags</label>
+        <div>
+          {lovesTags.map(tag => (
+            <span key={tag} className="badge bg-success me-1">
+              {tag}
+              <button type="button" className="btn-close btn-close-white ms-1" aria-label="Remove tag" onClick={() => removeTag('loves', tag)}></button>
+            </span>
+          ))}
+        </div>
+        <div className="input-group mt-2">
+          <input
+            type="text"
+            className="form-control"
+            value={newLovesTagInput}
+            onChange={e => setNewLovesTagInput(e.target.value)}
+            onKeyPress={e => { if (e.key === 'Enter') { addTag('loves'); e.preventDefault(); } }}
+            placeholder="Add loved tag"
+          />
+          <button className="btn btn-outline-success" type="button" onClick={() => addTag('loves')}>Add</button>
+        </div>
+      </div>
+
+      {/* Hates Tags */}
+      <div className="mb-3">
+        <label className="form-label">Hates Tags</label>
+        <div>
+          {hatesTags.map(tag => (
+            <span key={tag} className="badge bg-danger me-1">
+              {tag}
+              <button type="button" className="btn-close btn-close-white ms-1" aria-label="Remove tag" onClick={() => removeTag('hates', tag)}></button>
+            </span>
+          ))}
+        </div>
+        <div className="input-group mt-2">
+          <input
+            type="text"
+            className="form-control"
+            value={newHatesTagInput}
+            onChange={e => setNewHatesTagInput(e.target.value)}
+            onKeyPress={e => { if (e.key === 'Enter') { addTag('hates'); e.preventDefault(); } }}
+            placeholder="Add hated tag"
+          />
+          <button className="btn btn-outline-danger" type="button" onClick={() => addTag('hates')}>Add</button>
+        </div>
+      </div>
+
       <FullCalendar
         plugins={[dayGridPlugin, listPlugin]}
         initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listMonth'}

@@ -23,6 +23,8 @@ export interface Partner {
   schedule?: string;
   busyUntil?: Date;
   genrePreferences?: string[];
+  lovesTags?: string[];
+  hatesTags?: string[];
 }
 
 export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "Month Day, Year";

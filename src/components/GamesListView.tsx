@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
+import { formatDistanceToNow } from 'date-fns';
 
 interface GamesListProps {
   store: Store;
@@ -43,7 +44,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>Unmet</h2>
+        <h2>Need more collabs partners</h2>
         <button className="btn btn-sm btn-primary" onClick={addGame}>+ Add Game</button>
       </div>
 
@@ -60,12 +61,12 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               )}
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
             </div>
-            <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
+            <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
       </ul>
 
-      <h2>Met</h2>
+      <h2>Collabs planned</h2>
       <ul className="list-group">
         {met.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
@@ -79,7 +80,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               )}
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
             </div>
-            <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
+            <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
       </ul>

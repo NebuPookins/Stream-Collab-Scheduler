@@ -25,10 +25,13 @@ export interface Partner {
   genrePreferences?: string[];
 }
 
+export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "Month Day, Year";
+
 export interface Settings {
   greyThresholdDays: number;
   viewMode: "calendar" | "list";
   darkMode: boolean;
+  dateFormat: DateFormatOption;
 }
 
 export interface Store {

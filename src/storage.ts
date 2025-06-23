@@ -15,7 +15,7 @@ export async function loadStore(): Promise<Store> {
     return idbVal as Store;
   }
   // default empty store
-  return { games: [], partners: [], settings: { greyThresholdDays: 3, viewMode: "calendar", darkMode: false } };
+  return { games: [], partners: [], settings: { greyThresholdDays: 3, viewMode: "calendar", darkMode: false, dateFormat: "YYYY-MM-DD" } };
 }
 
 export async function saveStore(store: Store) {

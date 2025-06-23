@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Store, AskRecord, Partner } from '../types';
+import { Store, AskRecord, Partner, DateFormatOption } from '../types';
+import { formatDate } from '../helpers/dateFormatter';
+
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const { id } = useParams(); const navigate = useNavigate();
@@ -69,7 +71,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           const grey = !a.confirmed && ((now.getTime() - a.askedOn.getTime())/(1000*60*60*24) > greyThreshold);
           return (
             <li key={a.partnerId} className={`list-group-item d-flex justify-content-between ${grey?'text-muted':''}`}>
-              {partner?.name} &mdash; Asked on {a.askedOn.toLocaleDateString()}
+              {partner?.name} &mdash; Asked on {formatDate(a.askedOn, store.settings.dateFormat)}
             </li>
           );
         })}
@@ -87,7 +89,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <h3>Busy</h3>
       <ul className="list-group">
         {busyPartners.map(p => (
-          <li key={p.id} className="list-group-item text-muted">{p.name} (busy until {p.busyUntil?.toLocaleDateString()})</li>
+          <li key={p.id} className="list-group-item text-muted">{p.name} (busy until {p.busyUntil ? formatDate(p.busyUntil, store.settings.dateFormat) : ''})</li>
         ))}
       </ul>
     </div>

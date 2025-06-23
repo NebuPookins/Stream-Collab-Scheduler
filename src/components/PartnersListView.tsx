@@ -2,7 +2,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Partner, Store } from '../types';
+import { Partner, Store, DateFormatOption } from '../types';
+import { formatDate } from '../helpers/dateFormatter';
 
 interface PartnersListProps {
   store: Store;
@@ -43,7 +44,7 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
         {sorted.map(p => (
           <li key={p.id} className="list-group-item d-flex justify-content-between align-items-center">
             <Link to={`/partners/${p.id}`}>{p.name}</Link>
-            <span>{p.lastStreamedWith?.toLocaleDateString() || 'Never'}</span>
+            <span>{p.lastStreamedWith ? formatDate(p.lastStreamedWith, store.settings.dateFormat) : 'Never'}</span>
           </li>
         ))}
       </ul>

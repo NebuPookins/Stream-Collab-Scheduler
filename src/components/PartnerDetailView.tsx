@@ -5,7 +5,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Store, AskRecord } from '../types';
+import { Store, AskRecord, DateFormatOption } from '../types';
+import { getDatePickerFormat } from '../helpers/dateFormatter';
+
 interface PartnerDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) => {
   const { id } = useParams(); const navigate = useNavigate();
@@ -38,7 +40,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       </div>
       <div className="mb-3">
         <label className="form-label">Last Streamed With</label>
-        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} isClearable className="form-control" />
+        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
       <div className="mb-3">
         <label className="form-label">Schedule</label>
@@ -46,7 +48,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       </div>
       <div className="mb-3">
         <label className="form-label">Busy Until</label>
-        <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} isClearable className="form-control" />
+        <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
       <button className="btn btn-primary mb-3" onClick={save}>Save</button>
       <FullCalendar

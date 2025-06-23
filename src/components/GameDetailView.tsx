@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
-import { formatDate } from '../helpers/dateFormatter';
+import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -56,6 +56,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           onChange={(d) => setDeadline(d || undefined)}
           isClearable
           className="form-control"
+          dateFormat={getDatePickerFormat(store.settings.dateFormat)}
         />
       </div>
       <div className="mb-3">

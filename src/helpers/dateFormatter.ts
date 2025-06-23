@@ -21,3 +21,18 @@ export function formatDate(date: Date, format: DateFormatOption): string {
       return `${year}-${pad(month)}-${pad(day)}`;
   }
 }
+
+export function getDatePickerFormat(format: DateFormatOption): string {
+  switch (format) {
+    case "YYYY-MM-DD":
+      return "yyyy-MM-dd";
+    case "MM/DD/YYYY":
+      return "MM/dd/yyyy";
+    case "DD/MM/YYYY":
+      return "dd/MM/yyyy";
+    case "Month Day, Year":
+      return "MMMM d, yyyy";
+    default:
+      return "yyyy-MM-dd"; // Default fallback
+  }
+}

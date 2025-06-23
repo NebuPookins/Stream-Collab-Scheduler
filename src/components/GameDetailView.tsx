@@ -66,7 +66,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setDeadline(game.deadline);
     setDesiredPartners(game.desiredPartners);
     setSteamIdInput(game.steamId || '');
-    setCoverUrl(game.manualMetadata?.coverUrl);
+    // Only update coverUrl from game prop if there's a value,
+    // or if the steamIdInput is not currently providing a derived URL.
+    // This prevents overwriting an auto-filled URL before autosave.
+    const currentSteamId = parseSteamIdInput(steamIdInput);
+    if (game.manualMetadata?.coverUrl || !currentSteamId) {
+      setCoverUrl(game.manualMetadata?.coverUrl);
+    }
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
 
     // When game prop changes, update tags and mark it as an "initial load" for tags

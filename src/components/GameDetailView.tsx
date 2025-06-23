@@ -6,7 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
-import { getAllUniqueTags } from '../helpers/tagUtils';
+import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -115,16 +115,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     .filter(p => !askedIds.includes(p.id))
     .filter(p => !deadline || !p.busyUntil || p.busyUntil <= deadline)
     .sort((a, b) => {
-      const calculateScore = (partner: Partner) => {
-        if (!tags || tags.length === 0) return 0;
-        let score = 0;
-        tags.forEach(tag => {
-          if (partner.lovesTags?.includes(tag)) score++;
-          if (partner.hatesTags?.includes(tag)) score--;
-        });
-        return score;
-      };
-
       const now = new Date();
 
       const aIsAvailable = !a.busyUntil || new Date(a.busyUntil) <= now;
@@ -142,8 +132,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       // If one or both are available (past or null busyUntil), or if future busyUntil dates are tied, proceed to score.
       // For available partners (null or past busyUntil), they are effectively tied on the first criterion.
 
-      const scoreA = calculateScore(a);
-      const scoreB = calculateScore(b);
+      const scoreA = calculateGameScoreForPartner(tags, a.lovesTags, a.hatesTags);
+      const scoreB = calculateGameScoreForPartner(tags, b.lovesTags, b.hatesTags);
 
       if (scoreA !== scoreB) {
         return scoreB - scoreA; // Sort by score descending

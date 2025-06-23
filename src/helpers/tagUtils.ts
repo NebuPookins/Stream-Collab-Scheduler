@@ -14,3 +14,17 @@ export const getAllUniqueTags = (store: Store): string[] => {
 
   return Array.from(allTags).sort();
 };
+
+export const calculateGameScoreForPartner = (
+  gameTags: string[] | undefined,
+  partnerLovesTags: string[] | undefined,
+  partnerHatesTags: string[] | undefined
+): number => {
+  if (!gameTags || gameTags.length === 0) return 0;
+  let score = 0;
+  gameTags.forEach(tag => {
+    if (partnerLovesTags?.includes(tag)) score++;
+    if (partnerHatesTags?.includes(tag)) score--;
+  });
+  return score;
+};

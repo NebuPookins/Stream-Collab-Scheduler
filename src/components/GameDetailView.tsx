@@ -49,47 +49,42 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     }
   }, [steamIdInput, game.manualMetadata?.coverUrl]);
 
+  // Local state for game asks, to allow editing
+  const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
+  // This is the primary useEffect for syncing component state with the game prop
+  React.useEffect(() => {
+    setName(game.name);
+    setDeadline(game.deadline);
+    setDesiredPartners(game.desiredPartners);
+    setSteamIdInput(game.steamId || '');
+    setCoverUrl(game.manualMetadata?.coverUrl);
+    setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
+  }, [game]);
+
+
+  // memoizedSave now includes asks
   const memoizedSave = useCallback(() => {
-    const finalSteamId = parseSteamIdInput(steamIdInput); // This is the actual ID to save
-    // Ensure we don't save undefined officialName if it existed from other sources
+    const finalSteamId = parseSteamIdInput(steamIdInput);
     const { officialName, ...otherMetadata } = game.manualMetadata || {};
     const updatedManualMetadata = { ...otherMetadata, coverUrl };
 
-    const updated = {
+    const updatedGame = {
       ...game,
       name,
       deadline,
       desiredPartners,
       steamId: finalSteamId,
       manualMetadata: updatedManualMetadata,
+      asks, // Include the updated asks from local state
     };
     const newGames = [...store.games];
-    newGames[gameIndex] = updated;
+    newGames[gameIndex] = updatedGame;
     setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl]);
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
 
-  // useAutosave will now use steamIdInput for its dependency array regarding the Steam ID.
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl]);
-
-  // Effect to update component state if the game data changes from elsewhere (e.g. initial load)
-  React.useEffect(() => {
-    setName(game.name);
-    setDeadline(game.deadline);
-    setDesiredPartners(game.desiredPartners);
-    setSteamIdInput(game.steamId || ''); // game.steamId should now be the pure ID
-    setCoverUrl(game.manualMetadata?.coverUrl);
-    // officialName state is removed, so no need to set it here
-  }, [game]);
-
-
-  // Local state for game asks, to allow editing
-  const [asks, setAsks] = useState<AskRecord[]>(game.asks);
-
-  // Update local asks state if game.asks changes from props
-  React.useEffect(() => {
-    setAsks(game.asks);
-  }, [game.asks]);
+  // immediateSave now includes asks in dependencies for useAutosave
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -130,42 +125,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     // For deletion, immediate save is probably better.
     // This will be handled by adding `asks` to useAutosave dependencies and calling immediateSave from the button.
   };
-
-
-  // Update memoizedSave to include asks
-  const memoizedSave = useCallback(() => {
-    const finalSteamId = parseSteamIdInput(steamIdInput);
-    const { officialName, ...otherMetadata } = game.manualMetadata || {};
-    const updatedManualMetadata = { ...otherMetadata, coverUrl };
-
-    const updatedGame = {
-      ...game,
-      name,
-      deadline,
-      desiredPartners,
-      steamId: finalSteamId,
-      manualMetadata: updatedManualMetadata,
-      asks, // Include the updated asks
-    };
-    const newGames = [...store.games];
-    newGames[gameIndex] = updatedGame;
-    setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks
-
-  // useAutosave will now use steamIdInput for its dependency array regarding the Steam ID.
-  // And also `asks` for changes in the ask records.
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks
-
-  // Effect to update component state if the game data changes from elsewhere (e.g. initial load)
-  React.useEffect(() => {
-    setName(game.name);
-    setDeadline(game.deadline);
-    setDesiredPartners(game.desiredPartners);
-    setSteamIdInput(game.steamId || '');
-    setCoverUrl(game.manualMetadata?.coverUrl);
-    setAsks(game.asks); // Ensure asks are also reset/updated
-  }, [game]);
-
 
   return (
     <div>

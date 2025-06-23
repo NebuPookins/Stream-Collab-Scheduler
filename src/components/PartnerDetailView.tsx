@@ -25,6 +25,16 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const [newLovesTagInput, setNewLovesTagInput] = useState('');
   const [newHatesTagInput, setNewHatesTagInput] = useState('');
 
+  // Refs to track initial load for tags
+  const initialLovesTagsLoadRef = React.useRef(true);
+  const initialHatesTagsLoadRef = React.useRef(true);
+
+  // Effect to set initial load refs on mount
+  React.useEffect(() => {
+    initialLovesTagsLoadRef.current = true;
+    initialHatesTagsLoadRef.current = true;
+  }, []); // Empty dependency array means this runs once on mount
+
   const memoizedSave = useCallback(() => {
     const updated = { ...partner, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags };
     const arr = [...store.partners]; arr[idx] = updated;
@@ -32,6 +42,24 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   }, [store, setStore, partner, idx, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
 
   const immediateSave = useAutosave(memoizedSave, [name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
+
+  // Effect to save lovesTags when they are modified by the user
+  React.useEffect(() => {
+    if (initialLovesTagsLoadRef.current) {
+      initialLovesTagsLoadRef.current = false; // Mark initial load as complete
+      return; // Don't save on initial load/sync
+    }
+    immediateSave();
+  }, [lovesTags, immediateSave]);
+
+  // Effect to save hatesTags when they are modified by the user
+  React.useEffect(() => {
+    if (initialHatesTagsLoadRef.current) {
+      initialHatesTagsLoadRef.current = false; // Mark initial load as complete
+      return; // Don't save on initial load/sync
+    }
+    immediateSave();
+  }, [hatesTags, immediateSave]);
 
   // Build calendar events
   const events = store.games.flatMap(g =>
@@ -44,21 +72,22 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {
       setLovesTags([...lovesTags, newLovesTagInput]);
       setNewLovesTagInput('');
-      immediateSave();
+      // immediateSave(); // Handled by useEffect for lovesTags
     } else if (type === 'hates' && newHatesTagInput && !hatesTags.includes(newHatesTagInput)) {
       setHatesTags([...hatesTags, newHatesTagInput]);
       setNewHatesTagInput('');
-      immediateSave();
+      // immediateSave(); // Handled by useEffect for hatesTags
     }
   };
 
   const removeTag = (type: 'loves' | 'hates', tagToRemove: string) => {
     if (type === 'loves') {
       setLovesTags(lovesTags.filter(tag => tag !== tagToRemove));
+      // immediateSave(); // Handled by useEffect for lovesTags
     } else {
       setHatesTags(hatesTags.filter(tag => tag !== tagToRemove));
+      // immediateSave(); // Handled by useEffect for hatesTags
     }
-    immediateSave();
   };
 
   return (

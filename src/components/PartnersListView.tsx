@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { Partner, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
+import { sortPartners } from '../helpers/partnerSorters';
 
 interface PartnersListProps {
   store: Store;
@@ -13,9 +14,9 @@ interface PartnersListProps {
 const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
 
-  const sorted = [...store.partners].sort(
-    (a, b) => (a.lastStreamedWith?.getTime() ?? 0) - (b.lastStreamedWith?.getTime() ?? 0)
-  );
+  // Sort partners using the new helper function.
+  // No game-specific tags here, so gameTags argument is undefined.
+  const sortedPartners = sortPartners(store.partners);
 
   const addPartner = () => {
     const newPartner: Partner = {
@@ -41,10 +42,17 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
       </div>
 
       <ul className="list-group">
-        {sorted.map(p => (
+        {sortedPartners.map(p => (
           <li key={p.id} className="list-group-item d-flex justify-content-between align-items-center">
             <Link to={`/partners/${p.id}`}>{p.name}</Link>
-            <span>{p.lastStreamedWith ? formatDate(p.lastStreamedWith, store.settings.dateFormat) : 'Never'}</span>
+            <div>
+              {p.busyUntil && new Date(p.busyUntil) > new Date() && (
+                <span className="me-2 text-muted">
+                  (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
+                </span>
+              )}
+              <span>Last streamed: {p.lastStreamedWith ? formatDate(p.lastStreamedWith, store.settings.dateFormat) : 'Never'}</span>
+            </div>
           </li>
         ))}
       </ul>

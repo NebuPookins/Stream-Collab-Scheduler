@@ -6,7 +6,8 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
-import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
+import { getAllUniqueTags } from '../helpers/tagUtils';
+import { sortPartners } from '../helpers/partnerSorters';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -111,54 +112,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const now = new Date();
   const greyThreshold = store.settings.greyThresholdDays;
 
-  const availablePartners = store.partners
+  const partnersForConsideration = store.partners
     .filter(p => !askedIds.includes(p.id))
-    .filter(p => !deadline || !p.busyUntil || p.busyUntil <= deadline)
-    .sort((a, b) => {
-      const now = new Date();
+    .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline);
 
-      const aIsAvailable = !a.busyUntil || new Date(a.busyUntil) <= now;
-      const bIsAvailable = !b.busyUntil || new Date(b.busyUntil) <= now;
-
-      if (aIsAvailable && !bIsAvailable) return -1;
-      if (!aIsAvailable && bIsAvailable) return 1;
-
-      // If both are not available (i.e., busyUntil is in the future) or both are available
-      if (!aIsAvailable && !bIsAvailable && a.busyUntil && b.busyUntil) {
-        // Both have future busyUntil dates, sort by date ascending
-        const busyUntilComparison = new Date(a.busyUntil).getTime() - new Date(b.busyUntil).getTime();
-        if (busyUntilComparison !== 0) return busyUntilComparison;
-      }
-      // If one or both are available (past or null busyUntil), or if future busyUntil dates are tied, proceed to score.
-      // For available partners (null or past busyUntil), they are effectively tied on the first criterion.
-
-      const scoreA = calculateGameScoreForPartner(tags, a.lovesTags, a.hatesTags);
-      const scoreB = calculateGameScoreForPartner(tags, b.lovesTags, b.hatesTags);
-
-      if (scoreA !== scoreB) {
-        return scoreB - scoreA; // Sort by score descending
-      }
-
-      // Tertiary sort: by last streamed ascending
-      const lastStreamedA = a.lastStreamedWith ? new Date(a.lastStreamedWith).getTime() : Infinity;
-      const lastStreamedB = b.lastStreamedWith ? new Date(b.lastStreamedWith).getTime() : Infinity;
-      // Use Infinity for null dates to push them to the end if others have dates,
-      // or keep them tied if both are null.
-      // If both are actual dates, it sorts by time.
-      // If one is null and other is not, null is "later" (undesirable for ascending sort).
-      // Let's adjust: nulls should probably come last, meaning they are "later" than any actual date.
-      // Or, if we want partners never streamed with to appear *before* those streamed with longer ago,
-      // we would treat null as 0. The current (a.lastStreamedWith?.getTime() ?? 0) treats null as very old.
-      // The requirement is "last streamed ascending", so older dates (smaller timestamps) come first.
-      // A partner never streamed with (null) should arguably come after those streamed with long ago,
-      // or before. Let's assume null means "very long ago" or "never", which should come first.
-      const valA = a.lastStreamedWith?.getTime() ?? 0;
-      const valB = b.lastStreamedWith?.getTime() ?? 0;
-      return valA - valB;
-    });
+  const availablePartners = sortPartners(partnersForConsideration, tags);
 
   const busyPartners = store.partners
-    .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && p.busyUntil > deadline);
+    .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
 
   const askPartner = (pid: string) => {
     const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };

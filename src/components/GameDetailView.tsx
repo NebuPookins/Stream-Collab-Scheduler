@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
+import { getAllUniqueTags } from '../helpers/tagUtils';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -21,6 +22,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl);
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
+
+  const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
   // This function extracts the ID from a URL or validates if it's an ID
   const parseSteamIdInput = (input: string): string | undefined => {
@@ -237,7 +240,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               onChange={e => setNewTagInput(e.target.value)}
               onKeyPress={e => { if (e.key === 'Enter') { addTag(); e.preventDefault(); } }}
               placeholder="Add new tag"
+              list="all-tags-datalist"
             />
+            <datalist id="all-tags-datalist">
+              {allStoreTags.map(tag => (
+                <option key={tag} value={tag} />
+              ))}
+            </datalist>
             <button className="btn btn-outline-secondary" type="button" onClick={addTag}>Add</button>
           </div>
         </div>

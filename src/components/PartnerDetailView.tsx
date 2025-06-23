@@ -8,6 +8,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, DateFormatOption } from '../types';
 import { getDatePickerFormat } from '../helpers/dateFormatter';
+import { getAllUniqueTags } from '../helpers/tagUtils';
 
 interface PartnerDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) => {
@@ -24,6 +25,8 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const [hatesTags, setHatesTags] = useState<string[]>(partner.hatesTags || []);
   const [newLovesTagInput, setNewLovesTagInput] = useState('');
   const [newHatesTagInput, setNewHatesTagInput] = useState('');
+
+  const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
   // Refs to track initial load for tags
   const initialLovesTagsLoadRef = React.useRef(true);
@@ -130,7 +133,13 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
             onChange={e => setNewLovesTagInput(e.target.value)}
             onKeyPress={e => { if (e.key === 'Enter') { addTag('loves'); e.preventDefault(); } }}
             placeholder="Add loved tag"
+            list="all-tags-datalist-partner"
           />
+          <datalist id="all-tags-datalist-partner">
+            {allStoreTags.map(tag => (
+              <option key={`loves-${tag}`} value={tag} />
+            ))}
+          </datalist>
           <button className="btn btn-outline-success" type="button" onClick={() => addTag('loves')}>Add</button>
         </div>
       </div>
@@ -154,7 +163,13 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
             onChange={e => setNewHatesTagInput(e.target.value)}
             onKeyPress={e => { if (e.key === 'Enter') { addTag('hates'); e.preventDefault(); } }}
             placeholder="Add hated tag"
+            list="all-tags-datalist-partner"
           />
+          <datalist id="all-tags-datalist-partner">
+            {allStoreTags.map(tag => (
+              <option key={`hates-${tag}`} value={tag} />
+            ))}
+          </datalist>
           <button className="btn btn-outline-danger" type="button" onClick={() => addTag('hates')}>Add</button>
         </div>
       </div>

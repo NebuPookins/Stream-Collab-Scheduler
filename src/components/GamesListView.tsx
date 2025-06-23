@@ -2,7 +2,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Game, Store } from '../types';
+import { Game, Store, DateFormatOption } from '../types';
+import { formatDate } from '../helpers/dateFormatter';
 
 interface GamesListProps {
   store: Store;
@@ -50,7 +51,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         {unmet.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
             <Link to={`/games/${g.id}`}>{g.name}</Link>
-            <small>{g.deadline?.toLocaleDateString() || 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
+            <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
       </ul>
@@ -60,7 +61,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         {met.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
             <Link to={`/games/${g.id}`}>{g.name}</Link>
-            <small>{g.deadline?.toLocaleDateString() || 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
+            <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
       </ul>

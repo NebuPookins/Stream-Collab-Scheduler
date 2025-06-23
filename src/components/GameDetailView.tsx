@@ -191,6 +191,33 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
               <th scope="row">
                 {partner?.name}
+                {(() => {
+                  const openAsksForPartner = store.games.reduce((acc: string[], currentGame) => {
+                    if (currentGame.id === game.id) return acc; // Don't check current game
+                    const today = new Date();
+                    if (currentGame.deadline && new Date(currentGame.deadline) <= today) return acc;
+
+                    const askRecord = currentGame.asks.find(ask =>
+                      ask.partnerId === partner?.id &&
+                      (!ask.response || ask.response.trim() === '') &&
+                      !ask.confirmed
+                    );
+
+                    if (askRecord) {
+                      acc.push(currentGame.name);
+                    }
+                    return acc;
+                  }, []);
+
+                  if (openAsksForPartner.length > 0) {
+                    return (
+                      <small className="ms-2 text-muted d-block">
+                        (waiting for response for {openAsksForPartner.join(', ')})
+                      </small>
+                    );
+                  }
+                  return null;
+                })()}
               </th>
               <td>
                 <DatePicker

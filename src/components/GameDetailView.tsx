@@ -126,41 +126,60 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     // This will be handled by adding `asks` to useAutosave dependencies and calling immediateSave from the button.
   };
 
+  const labelBoostrapColumns = 3;
+  const fieldBootstrapColumns = 12 - labelBoostrapColumns;
+
   return (
     <div>
-      <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
-      <h2>Edit Game</h2>
-      <div className="mb-3">
-        <label className="form-label">Name</label>
-        <input className="form-control" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
-      </div>
-      <div className="mb-3">
-        <label className="form-label">Deadline</label>
-        <DatePicker
-          selected={deadline}
-          onChange={(d) => setDeadline(d || undefined)}
-          onBlur={immediateSave}
-          isClearable
-          className="form-control"
-          dateFormat={getDatePickerFormat(store.settings.dateFormat)}
-        />
-      </div>
-      <div className="mb-3">
-        <label className="form-label">Desired # Partners</label>
-        <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
-      </div>
-      <div className="mb-3">
-        <label className="form-label">Steam ID or Store Page URL</label>
-        <input className="form-control" value={steamIdInput} onChange={e => setSteamIdInput(e.target.value)} onBlur={immediateSave} />
-      </div>
-      <div className="mb-3">
-        <label className="form-label">Cover URL</label>
-        <input className="form-control" value={coverUrl || ''} onChange={e => setCoverUrl(e.target.value)} onBlur={immediateSave} />
-      </div>
       {coverUrl && <img src={coverUrl} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }} />}
+      <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
+      <div className="row mb-3">
+        <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
+      </div>
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Deadline</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <DatePicker
+            selected={deadline}
+            onChange={(d) => setDeadline(d || undefined)}
+            onBlur={immediateSave}
+            isClearable
+            className="form-control"
+            dateFormat={getDatePickerFormat(store.settings.dateFormat)}
+          />
+        </div>
+      </div>
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Desired # Partners</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
+        </div>
+      </div>
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Steam ID or Store Page URL</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <input className="form-control" value={steamIdInput} onChange={e => setSteamIdInput(e.target.value)} onBlur={immediateSave} />
+        </div>
+      </div>
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Cover URL</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <input className="form-control" value={coverUrl || ''} onChange={e => setCoverUrl(e.target.value)} onBlur={immediateSave} />
+        </div>
+      </div>
 
       <h3>Asked</h3>
-      <ul className="list-group mb-3">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Partner</th>
+            <th>Asked on</th>
+            <th>Response</th>
+            <th>Confirmed</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
         {asks.sort((a,b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime()).map((a, index) => {
           const partner = store.partners.find(p=>p.id===a.partnerId);
           // Ensure askedOn is a Date object for DatePicker
@@ -168,24 +187,20 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
 
           return (
-            <li key={a.partnerId + index} className={`list-group-item ${grey?'text-muted':''}`}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <strong>{partner?.name}</strong>
-                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); immediateSave(); }}>Delete</button>
-              </div>
-              <div className="mb-2">
-                <label className="form-label me-2">Asked On:</label>
+            <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
+              <th scope="row">
+                {partner?.name}
+              </th>
+              <td>
                 <DatePicker
                   selected={askedOnDate}
                   onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
                   onBlur={immediateSave}
                   className="form-control form-control-sm d-inline-block"
-                  style={{ width: 'auto' }}
                   dateFormat={getDatePickerFormat(store.settings.dateFormat)}
                 />
-              </div>
-              <div className="mb-2">
-                <label className="form-label me-2">Response:</label>
+                </td>
+                <td>
                 <input
                   type="text"
                   className="form-control form-control-sm d-inline-block"
@@ -194,8 +209,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   onChange={(e) => handleAskChange(index, 'response', e.target.value)}
                   onBlur={immediateSave}
                 />
-              </div>
-              <div className="form-check">
+              </td>
+              <td>
                 <input
                   type="checkbox"
                   className="form-check-input"
@@ -204,12 +219,15 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
                   onBlur={immediateSave}
                 />
-                <label className="form-check-label" htmlFor={`confirmed-${index}`}>Confirmed</label>
-              </div>
-            </li>
+              </td>
+              <td>
+                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); immediateSave(); }}>Delete</button>
+              </td>
+            </tr>
           );
         })}
-      </ul>
+        </tbody>
+      </table>
 
       <h3>Available</h3>
       <ul className="list-group mb-3">

@@ -129,13 +129,46 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         return score;
       };
 
+      const now = new Date();
+
+      const aIsAvailable = !a.busyUntil || new Date(a.busyUntil) <= now;
+      const bIsAvailable = !b.busyUntil || new Date(b.busyUntil) <= now;
+
+      if (aIsAvailable && !bIsAvailable) return -1;
+      if (!aIsAvailable && bIsAvailable) return 1;
+
+      // If both are not available (i.e., busyUntil is in the future) or both are available
+      if (!aIsAvailable && !bIsAvailable && a.busyUntil && b.busyUntil) {
+        // Both have future busyUntil dates, sort by date ascending
+        const busyUntilComparison = new Date(a.busyUntil).getTime() - new Date(b.busyUntil).getTime();
+        if (busyUntilComparison !== 0) return busyUntilComparison;
+      }
+      // If one or both are available (past or null busyUntil), or if future busyUntil dates are tied, proceed to score.
+      // For available partners (null or past busyUntil), they are effectively tied on the first criterion.
+
       const scoreA = calculateScore(a);
       const scoreB = calculateScore(b);
 
       if (scoreA !== scoreB) {
         return scoreB - scoreA; // Sort by score descending
       }
-      return (a.lastStreamedWith?.getTime() ?? 0) - (b.lastStreamedWith?.getTime() ?? 0); // Then by last streamed ascending
+
+      // Tertiary sort: by last streamed ascending
+      const lastStreamedA = a.lastStreamedWith ? new Date(a.lastStreamedWith).getTime() : Infinity;
+      const lastStreamedB = b.lastStreamedWith ? new Date(b.lastStreamedWith).getTime() : Infinity;
+      // Use Infinity for null dates to push them to the end if others have dates,
+      // or keep them tied if both are null.
+      // If both are actual dates, it sorts by time.
+      // If one is null and other is not, null is "later" (undesirable for ascending sort).
+      // Let's adjust: nulls should probably come last, meaning they are "later" than any actual date.
+      // Or, if we want partners never streamed with to appear *before* those streamed with longer ago,
+      // we would treat null as 0. The current (a.lastStreamedWith?.getTime() ?? 0) treats null as very old.
+      // The requirement is "last streamed ascending", so older dates (smaller timestamps) come first.
+      // A partner never streamed with (null) should arguably come after those streamed with long ago,
+      // or before. Let's assume null means "very long ago" or "never", which should come first.
+      const valA = a.lastStreamedWith?.getTime() ?? 0;
+      const valB = b.lastStreamedWith?.getTime() ?? 0;
+      return valA - valB;
     });
 
   const busyPartners = store.partners
@@ -354,6 +387,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           <li key={p.id} className="list-group-item d-flex justify-content-between">
             <div>
               <Link to={`/partners/${p.id}`}>{p.name}</Link>
+              {p.busyUntil && new Date(p.busyUntil) > new Date() && (
+                <span className="ms-1 text-muted">
+                  (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
+                </span>
+              )}
               {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
             </div>
             <div>

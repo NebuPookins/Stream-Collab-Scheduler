@@ -19,6 +19,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   // steamIdInput stores the raw value from the text field (can be URL or ID)
   const [steamIdInput, setSteamIdInput] = useState(game.steamId || ''); // Initialize with game.steamId if it's just an ID, or let user paste URL
   const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl);
+  const [tags, setTags] = useState<string[]>(game.tags || []);
+  const [newTagInput, setNewTagInput] = useState('');
 
   // This function extracts the ID from a URL or validates if it's an ID
   const parseSteamIdInput = (input: string): string | undefined => {
@@ -54,6 +56,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
   // This is the primary useEffect for syncing component state with the game prop
+  const firstRenderTagsRef = React.useRef(true); // Ref to track initial tags load
+
   React.useEffect(() => {
     setName(game.name);
     setDeadline(game.deadline);
@@ -61,8 +65,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setSteamIdInput(game.steamId || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
-  }, [game]);
 
+    // When game prop changes, update tags and mark it as an "initial load" for tags
+    setTags(game.tags || []);
+    firstRenderTagsRef.current = true;
+  }, [game]);
 
   // memoizedSave now includes asks
   const memoizedSave = useCallback(() => {
@@ -78,14 +85,25 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       steamId: finalSteamId,
       manualMetadata: updatedManualMetadata,
       asks, // Include the updated asks from local state
+      tags,
     };
     const newGames = [...store.games];
     newGames[gameIndex] = updatedGame;
     setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
 
   // immediateSave now includes asks in dependencies for useAutosave
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+
+  // Effect to save tags when they are modified by the user
+  React.useEffect(() => {
+    if (firstRenderTagsRef.current) {
+      firstRenderTagsRef.current = false; // Mark initial load as complete
+      return; // Don't save on initial load/sync
+    }
+    // Only save if it's not the initial load
+    immediateSave();
+  }, [tags, immediateSave]); // immediateSave is included as it's a dependency from useAutosave
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -97,7 +115,25 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const availablePartners = store.partners
     .filter(p => !askedIds.includes(p.id))
     .filter(p => !deadline || !p.busyUntil || p.busyUntil <= deadline)
-    .sort((a, b) => (a.lastStreamedWith?.getTime() ?? 0) - (b.lastStreamedWith?.getTime() ?? 0));
+    .sort((a, b) => {
+      const calculateScore = (partner: Partner) => {
+        if (!tags || tags.length === 0) return 0;
+        let score = 0;
+        tags.forEach(tag => {
+          if (partner.lovesTags?.includes(tag)) score++;
+          if (partner.hatesTags?.includes(tag)) score--;
+        });
+        return score;
+      };
+
+      const scoreA = calculateScore(a);
+      const scoreB = calculateScore(b);
+
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA; // Sort by score descending
+      }
+      return (a.lastStreamedWith?.getTime() ?? 0) - (b.lastStreamedWith?.getTime() ?? 0); // Then by last streamed ascending
+    });
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && p.busyUntil > deadline);
@@ -129,6 +165,19 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   const labelBoostrapColumns = 3;
   const fieldBootstrapColumns = 12 - labelBoostrapColumns;
+
+  const addTag = () => {
+    if (newTagInput && !tags.includes(newTagInput)) {
+      setTags([...tags, newTagInput]);
+      setNewTagInput('');
+      // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+    // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
+  };
 
   return (
     <div>
@@ -169,6 +218,31 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         </div>
       </div>
 
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Tags</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <div>
+            {tags.map(tag => (
+              <span key={tag} className="badge bg-secondary me-1">
+                {tag}
+                <button type="button" className="btn-close btn-close-white ms-1" aria-label="Remove tag" onClick={() => removeTag(tag)}></button>
+              </span>
+            ))}
+          </div>
+          <div className="input-group mt-2">
+            <input
+              type="text"
+              className="form-control"
+              value={newTagInput}
+              onChange={e => setNewTagInput(e.target.value)}
+              onKeyPress={e => { if (e.key === 'Enter') { addTag(); e.preventDefault(); } }}
+              placeholder="Add new tag"
+            />
+            <button className="btn btn-outline-secondary" type="button" onClick={addTag}>Add</button>
+          </div>
+        </div>
+      </div>
+
       <h3>Asked</h3>
       <table className="table">
         <thead>
@@ -187,10 +261,25 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
           const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
 
+          const tagFeedback = partner && tags.length > 0 ? (
+            <>
+              {tags.map(tag => {
+                if (partner.lovesTags?.includes(tag)) {
+                  return <span key={`${partner.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
+                }
+                if (partner.hatesTags?.includes(tag)) {
+                  return <span key={`${partner.id}-hates-${tag}`} title={`Hates: ${tag}`}>🗑️</span>;
+                }
+                return null;
+              })}
+            </>
+          ) : null;
+
           return (
             <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
               <th scope="row">
                 {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
+                {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
               </th>
               <td>
                 <DatePicker
@@ -237,9 +326,28 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
       <h3>Available</h3>
       <ul className="list-group mb-3">
-        {availablePartners.map(p => (
+        {availablePartners.map(p => {
+          const tagFeedback = tags.length > 0 ? (
+            <>
+              {tags.map(tag => {
+                if (p.lovesTags?.includes(tag)) {
+                  return <span key={`${p.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
+                }
+                if (p.hatesTags?.includes(tag)) {
+                  return <span key={`${p.id}-hates-${tag}`} title={`Hates: ${tag}`}>🗑️</span>;
+                }
+                return null;
+              })}
+            </>
+          ) : null;
+
+          return (
           <li key={p.id} className="list-group-item d-flex justify-content-between">
-            <Link to={`/partners/${p.id}`}>{p.name}</Link>
+            <div>
+              <Link to={`/partners/${p.id}`}>{p.name}</Link>
+              {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
+            </div>
+            <div>
             {(() => {
               const today = new Date();
               const openAsksForPartner = store.games.reduce((acc: string[], currentGame) => {
@@ -274,9 +382,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               }
               return null;
             })()}
-            <button className="btn btn-sm btn-outline-primary" onClick={()=>askPartner(p.id)}>Ask</button>
+            <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
+            </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <h3>Busy</h3>

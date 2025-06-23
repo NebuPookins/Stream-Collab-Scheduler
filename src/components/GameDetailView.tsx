@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -190,7 +190,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           return (
             <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
               <th scope="row">
-                {partner?.name}
+                {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
               </th>
               <td>
                 <DatePicker
@@ -239,7 +239,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <ul className="list-group mb-3">
         {availablePartners.map(p => (
           <li key={p.id} className="list-group-item d-flex justify-content-between">
-            {p.name} <button className="btn btn-sm btn-outline-primary" onClick={()=>askPartner(p.id)}>Ask</button>
+            <Link to={`/partners/${p.id}`}>{p.name}</Link> <button className="btn btn-sm btn-outline-primary" onClick={()=>askPartner(p.id)}>Ask</button>
           </li>
         ))}
       </ul>
@@ -247,7 +247,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <h3>Busy</h3>
       <ul className="list-group">
         {busyPartners.map(p => (
-          <li key={p.id} className="list-group-item text-muted">{p.name} (busy until {p.busyUntil ? formatDate(p.busyUntil, store.settings.dateFormat) : ''})</li>
+          <li key={p.id} className="list-group-item text-muted">
+            <Link to={`/partners/${p.id}`} className="text-muted">{p.name}</Link> (busy until {p.busyUntil ? formatDate(p.busyUntil, store.settings.dateFormat) : ''})
+          </li>
         ))}
       </ul>
     </div>

@@ -156,13 +156,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     if (newTagInput && !tags.includes(newTagInput)) {
       setTags([...tags, newTagInput]);
       setNewTagInput('');
-      immediateSave();
+      // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
-    immediateSave();
+    // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
   };
 
   return (

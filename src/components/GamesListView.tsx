@@ -52,13 +52,19 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         {unmet.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
             <div>
-              {g.manualMetadata?.coverUrl && (
-                <img
-                  src={g.manualMetadata.coverUrl}
-                  alt={g.name}
-                  style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
-                />
-              )}
+              {(() => {
+                let imageUrl = g.manualMetadata?.coverUrl;
+                if (!imageUrl && g.steamId) {
+                  imageUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`;
+                }
+                return imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={g.name}
+                    style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                  />
+                ) : null;
+              })()}
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
             </div>
             <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
@@ -71,13 +77,19 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         {met.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
             <div>
-              {g.manualMetadata?.coverUrl && (
-                <img
-                  src={g.manualMetadata.coverUrl}
-                  alt={g.name}
-                  style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
-                />
-              )}
+              {(() => {
+                let imageUrl = g.manualMetadata?.coverUrl;
+                if (!imageUrl && g.steamId) {
+                  imageUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`;
+                }
+                return imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={g.name}
+                    style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                  />
+                ) : null;
+              })()}
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
             </div>
             <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>

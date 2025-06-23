@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
+import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 
@@ -199,6 +200,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   className="form-control form-control-sm d-inline-block"
                   dateFormat={getDatePickerFormat(store.settings.dateFormat)}
                 />
+                {askedOnDate instanceof Date && !isNaN(askedOnDate.getTime()) ? (
+                  <small className="ms-2 text-muted">
+                    {formatDistanceToNow(askedOnDate, { addSuffix: true })}
+                  </small>
+                ) : null}
                 </td>
                 <td>
                 <input

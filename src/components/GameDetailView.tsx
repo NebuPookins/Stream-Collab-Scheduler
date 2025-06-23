@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 
@@ -183,6 +184,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   style={{ width: 'auto' }}
                   dateFormat={getDatePickerFormat(store.settings.dateFormat)}
                 />
+                <span className="ms-2 text-muted">
+                  ({formatDistanceToNow(askedOnDate, { addSuffix: true })})
+                </span>
               </div>
               <div className="mb-2">
                 <label className="form-label me-2">Response:</label>

@@ -6,9 +6,10 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Store, AskRecord, DateFormatOption } from '../types';
+import { Store, AskRecord, DateFormatOption, Game } from '../types';
 import { getDatePickerFormat } from '../helpers/dateFormatter';
-import { getAllUniqueTags } from '../helpers/tagUtils';
+import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
+import { Link } from 'react-router-dom';
 
 interface PartnerDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) => {
@@ -70,6 +71,31 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   );
   if (lastStreamedWith) events.push({ title: 'Last Stream', date: lastStreamedWith.toISOString().split('T')[0] });
   if (busyUntil) events.push({ title: 'Busy', date: busyUntil.toISOString().split('T')[0] });
+
+  const relevantGames = React.useMemo(() => {
+    return store.games
+      .filter(game => {
+        const confirmedAsks = game.asks.filter(a => a.confirmed).length;
+        return game.desiredPartners > confirmedAsks;
+      })
+      .map(game => {
+        const score = calculateGameScoreForPartner(game.tags, partner.lovesTags, partner.hatesTags);
+        return { ...game, score };
+      })
+      .sort((a, b) => {
+        // Primary sort: score descending
+        if (a.score !== b.score) {
+          return b.score - a.score;
+        }
+        // Secondary sort: deadline ascending (nulls last)
+        if (a.deadline && b.deadline) {
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        }
+        if (a.deadline) return -1; // a has deadline, b doesn't, a comes first
+        if (b.deadline) return 1;  // b has deadline, a doesn't, b comes first
+        return 0; // both deadlines are null
+      });
+  }, [store.games, partner.lovesTags, partner.hatesTags]);
 
   const addTag = (type: 'loves' | 'hates') => {
     if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {
@@ -179,6 +205,36 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listMonth'}
         events={events}
       />
+
+      <h3 className="mt-4">Relevant Games ({relevantGames.length})</h3>
+      {relevantGames.length > 0 ? (
+        <ul className="list-group">
+          {relevantGames.map(game => (
+            <li key={game.id} className="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <Link to={`/games/${game.id}`}>{game.name}</Link>
+                <span className="ms-2">
+                  (Score: {game.score})
+                  {game.tags?.map(tag => {
+                    if (partner.lovesTags?.includes(tag)) {
+                      return <span key={`${game.id}-loves-${tag}`} title={`Loves: ${tag}`} className="ms-1">❤️</span>;
+                    }
+                    if (partner.hatesTags?.includes(tag)) {
+                      return <span key={`${game.id}-hates-${tag}`} title={`Hates: ${tag}`} className="ms-1">🗑️</span>;
+                    }
+                    return null;
+                  })}
+                </span>
+              </div>
+              <small className="text-muted">
+                {game.deadline ? `Deadline: ${new Date(game.deadline).toLocaleDateString()}` : 'No deadline'}
+              </small>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No relevant games found for this partner based on current criteria.</p>
+      )}
     </div>
   );
 };

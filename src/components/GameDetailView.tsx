@@ -49,42 +49,47 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     }
   }, [steamIdInput, game.manualMetadata?.coverUrl]);
 
+  // Local state for game asks, to allow editing
+  const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
+  // This is the primary useEffect for syncing component state with the game prop
+  React.useEffect(() => {
+    setName(game.name);
+    setDeadline(game.deadline);
+    setDesiredPartners(game.desiredPartners);
+    setSteamIdInput(game.steamId || '');
+    setCoverUrl(game.manualMetadata?.coverUrl);
+    setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
+  }, [game]);
+
+
+  // memoizedSave now includes asks
   const memoizedSave = useCallback(() => {
-    const finalSteamId = parseSteamIdInput(steamIdInput); // This is the actual ID to save
-    // Ensure we don't save undefined officialName if it existed from other sources
+    const finalSteamId = parseSteamIdInput(steamIdInput);
     const { officialName, ...otherMetadata } = game.manualMetadata || {};
     const updatedManualMetadata = { ...otherMetadata, coverUrl };
 
-    const updated = {
+    const updatedGame = {
       ...game,
       name,
       deadline,
       desiredPartners,
       steamId: finalSteamId,
       manualMetadata: updatedManualMetadata,
+      asks, // Include the updated asks from local state
     };
     const newGames = [...store.games];
-    newGames[gameIndex] = updated;
+    newGames[gameIndex] = updatedGame;
     setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl]);
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
 
-  // useAutosave will now use steamIdInput for its dependency array regarding the Steam ID.
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl]);
-
-  // Effect to update component state if the game data changes from elsewhere (e.g. initial load)
-  React.useEffect(() => {
-    setName(game.name);
-    setDeadline(game.deadline);
-    setDesiredPartners(game.desiredPartners);
-    setSteamIdInput(game.steamId || ''); // game.steamId should now be the pure ID
-    setCoverUrl(game.manualMetadata?.coverUrl);
-    // officialName state is removed, so no need to set it here
-  }, [game]);
+  // immediateSave now includes asks in dependencies for useAutosave
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks]); // Added asks to dependencies
 
 
-  const askedIds = game.asks.map(a => a.partnerId);
-  const asked = game.asks.sort((a, b) => a.askedOn.getTime() - b.askedOn.getTime());
+  const askedIds = asks.map(a => a.partnerId);
+  // const asked = asks.sort((a, b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime());
+  // Sorting directly in the map function to ensure stable keys if dates are equal or invalid
   const now = new Date();
   const greyThreshold = store.settings.greyThresholdDays;
 
@@ -97,10 +102,28 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && p.busyUntil > deadline);
 
   const askPartner = (pid: string) => {
-    const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false };
-    const newGame = { ...game, asks: [...game.asks, newAsk] };
-    const newGames = [...store.games]; newGames[gameIndex] = newGame;
-    setStore({ ...store, games: newGames });
+    const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };
+    const updatedAsks = [...asks, newAsk];
+    setAsks(updatedAsks);
+    // No direct setStore here, will be handled by useAutosave or immediateSave via memoizedSave
+  };
+
+  const handleAskChange = (index: number, field: keyof AskRecord, value: any) => {
+    const updatedAsks = asks.map((ask, i) => {
+      if (i === index) {
+        return { ...ask, [field]: value };
+      }
+      return ask;
+    });
+    setAsks(updatedAsks);
+  };
+
+  const deleteAsk = (index: number) => {
+    const updatedAsks = asks.filter((_, i) => i !== index);
+    setAsks(updatedAsks);
+    // Consider if immediateSave should be called here or rely on useAutosave
+    // For deletion, immediate save is probably better.
+    // This will be handled by adding `asks` to useAutosave dependencies and calling immediateSave from the button.
   };
 
   return (
@@ -138,12 +161,51 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
       <h3>Asked</h3>
       <ul className="list-group mb-3">
-        {asked.map(a => {
+        {asks.sort((a,b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime()).map((a, index) => {
           const partner = store.partners.find(p=>p.id===a.partnerId);
-          const grey = !a.confirmed && ((now.getTime() - a.askedOn.getTime())/(1000*60*60*24) > greyThreshold);
+          // Ensure askedOn is a Date object for DatePicker
+          const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
+          const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
+
           return (
-            <li key={a.partnerId} className={`list-group-item d-flex justify-content-between ${grey?'text-muted':''}`}>
-              {partner?.name} &mdash; Asked on {formatDate(a.askedOn, store.settings.dateFormat)}
+            <li key={a.partnerId + index} className={`list-group-item ${grey?'text-muted':''}`}>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <strong>{partner?.name}</strong>
+                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); immediateSave(); }}>Delete</button>
+              </div>
+              <div className="mb-2">
+                <label className="form-label me-2">Asked On:</label>
+                <DatePicker
+                  selected={askedOnDate}
+                  onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
+                  onBlur={immediateSave}
+                  className="form-control form-control-sm d-inline-block"
+                  style={{ width: 'auto' }}
+                  dateFormat={getDatePickerFormat(store.settings.dateFormat)}
+                />
+              </div>
+              <div className="mb-2">
+                <label className="form-label me-2">Response:</label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm d-inline-block"
+                  style={{ width: 'auto', minWidth: '200px' }}
+                  value={a.response || ''}
+                  onChange={(e) => handleAskChange(index, 'response', e.target.value)}
+                  onBlur={immediateSave}
+                />
+              </div>
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id={`confirmed-${index}`}
+                  checked={a.confirmed}
+                  onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
+                  onBlur={immediateSave}
+                />
+                <label className="form-check-label" htmlFor={`confirmed-${index}`}>Confirmed</label>
+              </div>
             </li>
           );
         })}

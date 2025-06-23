@@ -56,6 +56,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
   // This is the primary useEffect for syncing component state with the game prop
+  const firstRenderTagsRef = React.useRef(true); // Ref to track initial tags load
+
   React.useEffect(() => {
     setName(game.name);
     setDeadline(game.deadline);
@@ -63,9 +65,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setSteamIdInput(game.steamId || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
-    setTags(game.tags || []);
-  }, [game]);
 
+    // When game prop changes, update tags and mark it as an "initial load" for tags
+    setTags(game.tags || []);
+    firstRenderTagsRef.current = true;
+  }, [game]);
 
   // memoizedSave now includes asks
   const memoizedSave = useCallback(() => {
@@ -90,6 +94,16 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   // immediateSave now includes asks in dependencies for useAutosave
   const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+
+  // Effect to save tags when they are modified by the user
+  React.useEffect(() => {
+    if (firstRenderTagsRef.current) {
+      firstRenderTagsRef.current = false; // Mark initial load as complete
+      return; // Don't save on initial load/sync
+    }
+    // Only save if it's not the initial load
+    immediateSave();
+  }, [tags, immediateSave]); // immediateSave is included as it's a dependency from useAutosave
 
 
   const askedIds = asks.map(a => a.partnerId);

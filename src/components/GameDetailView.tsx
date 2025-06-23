@@ -376,7 +376,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   return <span key={`${p.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
                 }
                 if (p.hatesTags?.includes(tag)) {
-                  return <span key={`${p.id}-hates-${tag}`} title={`Hates: ${tag}`}>🗑️</span>;
+                  return <span key={`${p.id}-hates-${tag}`} title={`Hates: ${tag}`}>👎🏻</span>;
                 }
                 return null;
               })}
@@ -429,8 +429,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               }
               return null;
             })()}
-            <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
             </div>
+            <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
           </li>
           );
         })}

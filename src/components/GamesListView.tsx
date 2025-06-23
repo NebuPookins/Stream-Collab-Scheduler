@@ -50,7 +50,16 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       <ul className="list-group mb-4">
         {unmet.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <Link to={`/games/${g.id}`}>{g.name}</Link>
+            <div>
+              {g.manualMetadata?.coverUrl && (
+                <img
+                  src={g.manualMetadata.coverUrl}
+                  alt={g.name}
+                  style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                />
+              )}
+              <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
+            </div>
             <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
@@ -60,7 +69,16 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       <ul className="list-group">
         {met.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <Link to={`/games/${g.id}`}>{g.name}</Link>
+            <div>
+              {g.manualMetadata?.coverUrl && (
+                <img
+                  src={g.manualMetadata.coverUrl}
+                  alt={g.name}
+                  style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                />
+              )}
+              <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
+            </div>
             <small>{g.deadline ? formatDate(g.deadline, store.settings.dateFormat) : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}

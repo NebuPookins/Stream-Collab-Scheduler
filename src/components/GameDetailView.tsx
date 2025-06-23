@@ -15,14 +15,73 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [name, setName] = useState(game.name);
   const [deadline, setDeadline] = useState<Date | undefined>(game.deadline);
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
+  // steamIdInput stores the raw value from the text field (can be URL or ID)
+  const [steamIdInput, setSteamIdInput] = useState(game.steamId || ''); // Initialize with game.steamId if it's just an ID, or let user paste URL
+  const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl);
+
+  // This function extracts the ID from a URL or validates if it's an ID
+  const parseSteamIdInput = (input: string): string | undefined => {
+    if (!input) return undefined;
+    const match = input.match(/store.steampowered.com\/app\/(\d+)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    // Check if it's a simple ID
+    if (/^\d+$/.test(input)) {
+      return input;
+    }
+    return undefined;
+  };
+
+  // This effect handles the auto-population of fields when a valid Steam ID is extracted
+  React.useEffect(() => {
+    const extractedId = parseSteamIdInput(steamIdInput);
+
+    if (extractedId) {
+      // Auto-populate coverUrl if it's currently empty or hasn't been set
+      // And the game's stored coverUrl is also empty
+      if (!coverUrl && !game.manualMetadata?.coverUrl) {
+        setCoverUrl(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${extractedId}/header.jpg`);
+      }
+    } else {
+      // If steamIdInput is cleared or invalid, clear auto-filled coverUrl only if it was not manually set
+      if (!game.manualMetadata?.coverUrl) setCoverUrl(undefined);
+    }
+  }, [steamIdInput, game.manualMetadata?.coverUrl]);
+
 
   const memoizedSave = useCallback(() => {
-    const updated = { ...game, name, deadline, desiredPartners };
-    const newGames = [...store.games]; newGames[gameIndex] = updated;
-    setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners]);
+    const finalSteamId = parseSteamIdInput(steamIdInput); // This is the actual ID to save
+    // Ensure we don't save undefined officialName if it existed from other sources
+    const { officialName, ...otherMetadata } = game.manualMetadata || {};
+    const updatedManualMetadata = { ...otherMetadata, coverUrl };
 
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners]);
+    const updated = {
+      ...game,
+      name,
+      deadline,
+      desiredPartners,
+      steamId: finalSteamId,
+      manualMetadata: updatedManualMetadata,
+    };
+    const newGames = [...store.games];
+    newGames[gameIndex] = updated;
+    setStore({ ...store, games: newGames });
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl]);
+
+  // useAutosave will now use steamIdInput for its dependency array regarding the Steam ID.
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl]);
+
+  // Effect to update component state if the game data changes from elsewhere (e.g. initial load)
+  React.useEffect(() => {
+    setName(game.name);
+    setDeadline(game.deadline);
+    setDesiredPartners(game.desiredPartners);
+    setSteamIdInput(game.steamId || ''); // game.steamId should now be the pure ID
+    setCoverUrl(game.manualMetadata?.coverUrl);
+    // officialName state is removed, so no need to set it here
+  }, [game]);
+
 
   const askedIds = game.asks.map(a => a.partnerId);
   const asked = game.asks.sort((a, b) => a.askedOn.getTime() - b.askedOn.getTime());
@@ -67,6 +126,15 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         <label className="form-label">Desired # Partners</label>
         <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
       </div>
+      <div className="mb-3">
+        <label className="form-label">Steam ID or Store Page URL</label>
+        <input className="form-control" value={steamIdInput} onChange={e => setSteamIdInput(e.target.value)} onBlur={immediateSave} />
+      </div>
+      <div className="mb-3">
+        <label className="form-label">Cover URL</label>
+        <input className="form-control" value={coverUrl || ''} onChange={e => setCoverUrl(e.target.value)} onBlur={immediateSave} />
+      </div>
+      {coverUrl && <img src={coverUrl} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }} />}
 
       <h3>Asked</h3>
       <ul className="list-group mb-3">

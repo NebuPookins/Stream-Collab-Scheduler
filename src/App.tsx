@@ -23,28 +23,21 @@ const App: React.FC = () => {
 
   return (
     <div className={store.settings.darkMode ? 'bg-dark text-light' : ''}>
-      <nav className="navbar navbar-expand-lg navbar-light bg-light">
-        <NavLink className="navbar-brand" to="/games">Scheduler</NavLink>
+      <nav className="navbar navbar-expand-lg">
+        <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+          <li className="nav-item"><NavLink className="nav-link" to="/games">Games</NavLink></li>
+          <li className="nav-item"><NavLink className="nav-link" to="/partners">Partners</NavLink></li>
+          <li className="nav-item"><NavLink className="nav-link" to="/settings">Settings</NavLink></li>
+        </ul>
       </nav>
       <div className="container-fluid">
-        <div className="row">
-          <div className="col-2 bg-secondary vh-100">
-            <ul className="nav flex-column text-white mt-3">
-              <li className="nav-item"><NavLink className="nav-link text-white" to="/games">Games</NavLink></li>
-              <li className="nav-item"><NavLink className="nav-link text-white" to="/partners">Partners</NavLink></li>
-              <li className="nav-item"><NavLink className="nav-link text-white" to="/settings">Settings</NavLink></li>
-            </ul>
-          </div>
-          <div className="col-10 p-4">
-            <Routes>
-              <Route path="/games" element={<GamesListView store={store} setStore={setStore} />} />
-              <Route path="/games/:id" element={<GameDetailView store={store} setStore={setStore} />} />
-              <Route path="/partners" element={<PartnersListView store={store} setStore={setStore} />} />
-              <Route path="/partners/:id" element={<PartnerDetailView store={store} setStore={setStore} />} />
-              <Route path="/settings" element={<SettingsView store={store} setStore={setStore} />} />
-            </Routes>
-          </div>
-        </div>
+        <Routes>
+          <Route path="/games" element={<GamesListView store={store} setStore={setStore} />} />
+          <Route path="/games/:id" element={<GameDetailView store={store} setStore={setStore} />} />
+          <Route path="/partners" element={<PartnersListView store={store} setStore={setStore} />} />
+          <Route path="/partners/:id" element={<PartnerDetailView store={store} setStore={setStore} />} />
+          <Route path="/settings" element={<SettingsView store={store} setStore={setStore} />} />
+        </Routes>
       </div>
     </div>
   );

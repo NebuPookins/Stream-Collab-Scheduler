@@ -19,7 +19,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
   // steamIdInput stores the raw value from the text field (can be URL or ID)
   const [steamIdInput, setSteamIdInput] = useState(game.steamId || ''); // Initialize with game.steamId if it's just an ID, or let user paste URL
-  const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl);
+  const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl); // User's manual input
+  const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined); // For Steam-derived placeholder
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
 
@@ -44,16 +45,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const extractedId = parseSteamIdInput(steamIdInput);
 
     if (extractedId) {
-      // Auto-populate coverUrl if it's currently empty or hasn't been set
-      // And the game's stored coverUrl is also empty
-      if (!coverUrl && !game.manualMetadata?.coverUrl) {
-        setCoverUrl(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${extractedId}/header.jpg`);
-      }
+      setSteamCoverPlaceholder(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${extractedId}/header.jpg`);
     } else {
-      // If steamIdInput is cleared or invalid, clear auto-filled coverUrl only if it was not manually set
-      if (!game.manualMetadata?.coverUrl) setCoverUrl(undefined);
+      setSteamCoverPlaceholder(undefined);
     }
-  }, [steamIdInput, game.manualMetadata?.coverUrl]);
+  }, [steamIdInput]); // Dependency only on steamIdInput
 
   // Local state for game asks, to allow editing
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
@@ -66,13 +62,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setDeadline(game.deadline);
     setDesiredPartners(game.desiredPartners);
     setSteamIdInput(game.steamId || '');
-    // Only update coverUrl from game prop if there's a value,
-    // or if the steamIdInput is not currently providing a derived URL.
-    // This prevents overwriting an auto-filled URL before autosave.
-    const currentSteamId = parseSteamIdInput(steamIdInput);
-    if (game.manualMetadata?.coverUrl || !currentSteamId) {
-      setCoverUrl(game.manualMetadata?.coverUrl);
-    }
+    setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
 
     // When game prop changes, update tags and mark it as an "initial load" for tags
@@ -221,9 +211,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
   };
 
+  const imageUrlForDisplay = coverUrl || steamCoverPlaceholder;
+
   return (
     <div>
-      {coverUrl && <img src={coverUrl} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }} />}
+      {imageUrlForDisplay && <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }} />}
       <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
       <div className="row mb-3">
         <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
@@ -256,7 +248,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Cover URL</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input className="form-control" value={coverUrl || ''} onChange={e => setCoverUrl(e.target.value)} onBlur={immediateSave} />
+          <input
+            className="form-control"
+            value={coverUrl || ''}
+            onChange={e => setCoverUrl(e.target.value)}
+            onBlur={immediateSave}
+            placeholder={steamCoverPlaceholder || ''}
+          />
         </div>
       </div>
 

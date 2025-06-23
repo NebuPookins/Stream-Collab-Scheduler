@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
+import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
@@ -15,11 +16,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [deadline, setDeadline] = useState<Date | undefined>(game.deadline);
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
 
-  const save = () => {
+  const memoizedSave = useCallback(() => {
     const updated = { ...game, name, deadline, desiredPartners };
     const newGames = [...store.games]; newGames[gameIndex] = updated;
     setStore({ ...store, games: newGames });
-  };
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners]);
+
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners]);
 
   const askedIds = game.asks.map(a => a.partnerId);
   const asked = game.asks.sort((a, b) => a.askedOn.getTime() - b.askedOn.getTime());
@@ -47,13 +50,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <h2>Edit Game</h2>
       <div className="mb-3">
         <label className="form-label">Name</label>
-        <input className="form-control" value={name} onChange={e => setName(e.target.value)} />
+        <input className="form-control" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
       </div>
       <div className="mb-3">
         <label className="form-label">Deadline</label>
         <DatePicker
           selected={deadline}
           onChange={(d) => setDeadline(d || undefined)}
+          onBlur={immediateSave}
           isClearable
           className="form-control"
           dateFormat={getDatePickerFormat(store.settings.dateFormat)}
@@ -61,9 +65,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       </div>
       <div className="mb-3">
         <label className="form-label">Desired # Partners</label>
-        <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} />
+        <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
       </div>
-      <button className="btn btn-primary mb-4" onClick={save}>Save</button>
 
       <h3>Asked</h3>
       <ul className="list-group mb-3">

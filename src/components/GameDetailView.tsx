@@ -239,7 +239,42 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <ul className="list-group mb-3">
         {availablePartners.map(p => (
           <li key={p.id} className="list-group-item d-flex justify-content-between">
-            <Link to={`/partners/${p.id}`}>{p.name}</Link> <button className="btn btn-sm btn-outline-primary" onClick={()=>askPartner(p.id)}>Ask</button>
+            <Link to={`/partners/${p.id}`}>{p.name}</Link>
+            {(() => {
+              const today = new Date();
+              const openAsksForPartner = store.games.reduce((acc: string[], currentGame) => {
+                if (currentGame.id === game.id) {
+                  return acc; // Don't check current game
+                }
+                if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
+                  return acc;
+                }
+                if (currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length) {
+                  return acc;
+                }
+
+                const askRecord = currentGame.asks.find(ask =>
+                  ask.partnerId === p?.id &&
+                  (!ask.response || ask.response.trim() === '') &&
+                  !ask.confirmed
+                );
+
+                if (askRecord) {
+                  acc.push(currentGame.name);
+                }
+                return acc;
+              }, []);
+
+              if (openAsksForPartner.length > 0) {
+                return (
+                  <small className="ms-2 text-muted d-block">
+                    (Already waiting for response for {openAsksForPartner.join(', ')})
+                  </small>
+                );
+              }
+              return null;
+            })()}
+            <button className="btn btn-sm btn-outline-primary" onClick={()=>askPartner(p.id)}>Ask</button>
           </li>
         ))}
       </ul>

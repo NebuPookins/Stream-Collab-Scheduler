@@ -162,11 +162,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
   };
 
-  const imageUrlForDisplay = coverUrl || steamCoverPlaceholder;
+  const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
 
   return (
     <div>
-      {imageUrlForDisplay && <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }} />}
+      <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
       <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
       <div className="row mb-3">
         <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />

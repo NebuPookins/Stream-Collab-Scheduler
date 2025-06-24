@@ -202,7 +202,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
 
       <FullCalendar
         plugins={[dayGridPlugin, listPlugin]}
-        initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listMonth'}
+        initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listYear'}
         events={events}
       />
 

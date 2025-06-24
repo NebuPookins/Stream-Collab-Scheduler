@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Game, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
+import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
 
 interface GamesListProps {
   store: Store;
@@ -28,7 +29,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       id: uuidv4(),
       name: 'New Game',
       deadline: undefined,
-      steamId: undefined,
+      storeUrl: undefined,
       manualMetadata: {},
       desiredPartners: 1,
       asks: [],
@@ -54,8 +55,10 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
             <div>
               {(() => {
                 let imageUrl = g.manualMetadata?.coverUrl;
-                if (!imageUrl && g.steamId) {
-                  imageUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`;
+                if (!imageUrl && g.storeUrl) {
+                  const steamAppId = getSteamAppIdFromUrl(g.storeUrl);
+                  imageUrl = getSteamCoverUrl(steamAppId);
+                  // If not a steam URL or no app ID, imageUrl will be undefined, so no image will be shown unless manually provided.
                 }
                 return imageUrl ? (
                   <img
@@ -79,8 +82,10 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
             <div>
               {(() => {
                 let imageUrl = g.manualMetadata?.coverUrl;
-                if (!imageUrl && g.steamId) {
-                  imageUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`;
+                if (!imageUrl && g.storeUrl) {
+                  const steamAppId = getSteamAppIdFromUrl(g.storeUrl);
+                  imageUrl = getSteamCoverUrl(steamAppId);
+                  // If not a steam URL or no app ID, imageUrl will be undefined, so no image will be shown unless manually provided.
                 }
                 return imageUrl ? (
                   <img

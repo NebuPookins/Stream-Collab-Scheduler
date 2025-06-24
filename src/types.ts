@@ -9,8 +9,8 @@ export interface Game {
   id: string;
   name: string;
   deadline?: Date;
-  steamId?: string;
-  manualMetadata?: { coverUrl?: string; officialName?: string; [key: string]: any };
+  storeUrl?: string;
+  manualMetadata?: { coverUrl?: string; [key: string]: any };
   desiredPartners: number;
   asks: AskRecord[];
   tags?: string[];

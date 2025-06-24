@@ -8,6 +8,7 @@ import { Store, AskRecord, Partner, DateFormatOption } from '../types';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
+import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -18,8 +19,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [name, setName] = useState(game.name);
   const [deadline, setDeadline] = useState<Date | undefined>(game.deadline);
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
-  // steamIdInput stores the raw value from the text field (can be URL or ID)
-  const [steamIdInput, setSteamIdInput] = useState(game.steamId || ''); // Initialize with game.steamId if it's just an ID, or let user paste URL
+  // storeUrlInput stores the raw value from the text field
+  const [storeUrlInput, setStoreUrlInput] = useState(game.storeUrl || ''); // Initialize with game.storeUrl
   const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl); // User's manual input
   const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined); // For Steam-derived placeholder
   const [tags, setTags] = useState<string[]>(game.tags || []);
@@ -27,30 +28,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
-  // This function extracts the ID from a URL or validates if it's an ID
-  const parseSteamIdInput = (input: string): string | undefined => {
-    if (!input) return undefined;
-    const match = input.match(/store.steampowered.com\/app\/(\d+)/);
-    if (match && match[1]) {
-      return match[1];
-    }
-    // Check if it's a simple ID
-    if (/^\d+$/.test(input)) {
-      return input;
-    }
-    return undefined;
-  };
-
-  // This effect handles the auto-population of fields when a valid Steam ID is extracted
+  // This effect handles the auto-population of the Steam cover placeholder when a valid Steam URL is entered
   React.useEffect(() => {
-    const extractedId = parseSteamIdInput(steamIdInput);
-
-    if (extractedId) {
-      setSteamCoverPlaceholder(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${extractedId}/header.jpg`);
-    } else {
-      setSteamCoverPlaceholder(undefined);
-    }
-  }, [steamIdInput]); // Dependency only on steamIdInput
+    const steamAppId = getSteamAppIdFromUrl(storeUrlInput);
+    setSteamCoverPlaceholder(getSteamCoverUrl(steamAppId));
+  }, [storeUrlInput]); // Dependency only on storeUrlInput
 
   // Local state for game asks, to allow editing
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
@@ -62,7 +44,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setName(game.name);
     setDeadline(game.deadline);
     setDesiredPartners(game.desiredPartners);
-    setSteamIdInput(game.steamId || '');
+    setStoreUrlInput(game.storeUrl || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
 
@@ -73,16 +55,18 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   // memoizedSave now includes asks
   const memoizedSave = useCallback(() => {
-    const finalSteamId = parseSteamIdInput(steamIdInput);
-    const { officialName, ...otherMetadata } = game.manualMetadata || {};
-    const updatedManualMetadata = { ...otherMetadata, coverUrl };
+    // const finalSteamId = parseSteamIdInput(steamIdInput); // We don't parse anymore, just save the raw URL
+    const updatedManualMetadata = { ...(game.manualMetadata || {}), coverUrl };
+    // Remove officialName if it exists from old data, ensure coverUrl is updated
+    delete updatedManualMetadata.officialName;
+
 
     const updatedGame = {
       ...game,
       name,
       deadline,
       desiredPartners,
-      steamId: finalSteamId,
+      storeUrl: storeUrlInput, // Save the raw input as the store URL
       manualMetadata: updatedManualMetadata,
       asks, // Include the updated asks from local state
       tags,
@@ -90,10 +74,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const newGames = [...store.games];
     newGames[gameIndex] = updatedGame;
     setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
 
   // immediateSave now includes asks in dependencies for useAutosave
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
 
   // Effect to save tags when they are modified by the user
   React.useEffect(() => {
@@ -191,9 +175,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         </div>
       </div>
       <div className="row mb-3">
-        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Steam ID or Store Page URL</label>
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Store Page URL</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input className="form-control" value={steamIdInput} onChange={e => setSteamIdInput(e.target.value)} onBlur={immediateSave} />
+          <input className="form-control" value={storeUrlInput} onChange={e => setStoreUrlInput(e.target.value)} onBlur={immediateSave} />
         </div>
       </div>
       <div className="row mb-3">

@@ -352,33 +352,37 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             <div>
             {(() => {
               const today = new Date();
-              const openAsksForPartner = store.games.reduce((acc: string[], currentGame) => {
+              const openAsksForPartner = store.games.reduce((acc: {confirmed: string[], unconfirmed: string[]}, currentGame) => {
                 if (currentGame.id === game.id) {
                   return acc; // Don't check current game
                 }
                 if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
                   return acc;
                 }
-                if (currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length) {
-                  return acc;
-                }
+                const gameHasAllNeededConfirmations = currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length;
 
-                const askRecord = currentGame.asks.find(ask =>
-                  ask.partnerId === p?.id &&
-                  (!ask.response || ask.response.trim() === '') &&
-                  !ask.confirmed
-                );
-
-                if (askRecord) {
-                  acc.push(currentGame.name);
-                }
+                currentGame.asks.filter(ask =>
+                  ask.partnerId === p?.id
+                ).forEach(ask => {
+                  if (ask.confirmed) {
+                    acc.confirmed.push(currentGame.name);
+                  } else if ((!gameHasAllNeededConfirmations) && ((!ask.response) || ask.response.trim() == "")) {
+                    acc.unconfirmed.push(currentGame.name);
+                  }
+                });
                 return acc;
-              }, []);
-
-              if (openAsksForPartner.length > 0) {
+              }, {confirmed: [], unconfirmed: []});
+              if (openAsksForPartner.confirmed.length > 0 || openAsksForPartner.unconfirmed.length > 0) {
                 return (
                   <small className="ms-2 text-muted d-block">
-                    (Already waiting for response for {openAsksForPartner.join(', ')})
+                    (Already {
+                      [
+                        openAsksForPartner.confirmed.length > 0 ?
+                        `streaming [${openAsksForPartner.confirmed.join(', ')}]` : null,
+                        openAsksForPartner.unconfirmed.length > 0 ?
+                        `waiting for response for [${openAsksForPartner.unconfirmed.join(', ')}]` : null,
+                      ].filter(it => it != null).join(", ")
+                    })
                   </small>
                 );
               }

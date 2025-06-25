@@ -24,6 +24,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined); // For Steam-derived placeholder
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
+  const [done, setDone] = useState<Date | undefined>(game.done);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -65,13 +66,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setSteamIdInput(game.steamId || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
+    setDone(game.done); // Sync done state
 
     // When game prop changes, update tags and mark it as an "initial load" for tags
     setTags(game.tags || []);
     firstRenderTagsRef.current = true;
   }, [game]);
 
-  // memoizedSave now includes asks
+  // memoizedSave now includes asks and done
   const memoizedSave = useCallback(() => {
     const finalSteamId = parseSteamIdInput(steamIdInput);
     const { officialName, ...otherMetadata } = game.manualMetadata || {};
@@ -86,14 +88,15 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       manualMetadata: updatedManualMetadata,
       asks, // Include the updated asks from local state
       tags,
+      done, // Include the updated done state
     };
     const newGames = [...store.games];
     newGames[gameIndex] = updatedGame;
     setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags, done]); // Added asks, tags and done to dependencies
 
-  // immediateSave now includes asks in dependencies for useAutosave
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags]); // Added asks and tags to dependencies
+  // immediateSave now includes asks, tags and done in dependencies for useAutosave
+  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags, done]); // Added asks, tags and done to dependencies
 
   // Effect to save tags when they are modified by the user
   React.useEffect(() => {
@@ -167,7 +170,17 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   return (
     <div>
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
-      <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
+        {done ? (
+          <div>
+            <span className="me-2">Marked as done on: {formatDate(done, store.settings.dateFormat)}</span>
+            <button className="btn btn-warning" onClick={() => { setDone(undefined); immediateSave(); }}>Mark as Not Done</button>
+          </div>
+        ) : (
+          <button className="btn btn-success" onClick={() => { setDone(new Date()); immediateSave(); }}>Mark as Done</button>
+        )}
+      </div>
       <div className="row mb-3">
         <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
       </div>

@@ -14,9 +14,13 @@ interface GamesListProps {
 const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
 
-  // split and sort as before
-  const met = store.games.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
-  const unmet = store.games.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
+  // Filter games into notDone, and then further into met and unmet
+  const notDoneGames = store.games.filter(g => !g.done);
+  const doneGames = store.games.filter(g => g.done);
+
+  const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
+  const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
+
   const sortByDeadline = (a: Game, b: Game) => {
     const t1 = a.deadline?.getTime() ?? Infinity;
     const t2 = b.deadline?.getTime() ?? Infinity;
@@ -32,7 +36,8 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       manualMetadata: {},
       desiredPartners: 1,
       asks: [],
-      tags: []
+      tags: [],
+      done: undefined,
     };
     setStore({
       ...store,
@@ -95,6 +100,42 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
             <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
           </li>
         ))}
+      </ul>
+
+      <h2>Done Games</h2>
+      <ul className="list-group">
+        {doneGames.sort((a, b) => (b.done?.getTime() || 0) - (a.done?.getTime() || 0)).map(g => {
+          const confirmedPartners = g.asks
+            .filter(a => a.confirmed)
+            .map(a => store.partners.find(p => p.id === a.partnerId)?.name)
+            .filter(name => name)
+            .join(', ');
+
+          return (
+            <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                {(() => {
+                  let imageUrl = g.manualMetadata?.coverUrl;
+                  if (!imageUrl && g.steamId) {
+                    imageUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${g.steamId}/header.jpg`;
+                  }
+                  return imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={g.name}
+                      style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                    />
+                  ) : null;
+                })()}
+                <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
+              </div>
+              <small>
+                Done on: {g.done ? formatDate(g.done, store.settings.dateFormat) : 'N/A'}
+                {confirmedPartners && ` | With: ${confirmedPartners}`}
+              </small>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -57,19 +57,19 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
   // This is the primary useEffect for syncing component state with the game prop
-  const firstRenderTagsRef = React.useRef(true); // Ref to track initial tags load
-
+  // It ensures that if the `game` prop changes (e.g. data loaded, external update, or after our own save),
+  // the local component state reflects that truth.
   React.useEffect(() => {
     setName(game.name);
     setDeadline(game.deadline);
     setDesiredPartners(game.desiredPartners);
     setSteamIdInput(game.steamId || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
-    setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
-    setDone(game.done); // Sync done state
-
-    // When game prop changes, update tags and mark it as an "initial load" for tags
+    setAsks(game.asks);
+    setDone(game.done);
     setTags(game.tags || []);
+    // When game prop changes (especially game.id), we consider the tags as "freshly loaded"
+    // for the purpose of the tags autosave effect.
     firstRenderTagsRef.current = true;
   }, [game]);
 
@@ -98,15 +98,26 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   // immediateSave now includes asks, tags and done in dependencies for useAutosave
   const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, steamIdInput, coverUrl, asks, tags, done]); // Added asks, tags and done to dependencies
 
+  // Ref to track initial tags load for the specific game instance
+  const firstRenderTagsRef = React.useRef(true);
+  const gameIdForTagsRef = React.useRef<string | undefined>(game.id);
+
   // Effect to save tags when they are modified by the user
   React.useEffect(() => {
-    if (firstRenderTagsRef.current) {
-      firstRenderTagsRef.current = false; // Mark initial load as complete
-      return; // Don't save on initial load/sync
+    // If the game ID has changed, reset the firstRenderTagsRef
+    if (game.id !== gameIdForTagsRef.current) {
+      firstRenderTagsRef.current = true;
+      gameIdForTagsRef.current = game.id;
     }
-    // Only save if it's not the initial load
+
+    if (firstRenderTagsRef.current) {
+      firstRenderTagsRef.current = false; // Mark initial load for this game's tags as complete
+      return; // Don't save on initial load/sync of tags for this game
+    }
+
+    // Only save if it's not the initial load of tags for the current game
     immediateSave();
-  }, [tags, immediateSave]); // immediateSave is included as it's a dependency from useAutosave
+  }, [tags, immediateSave, game.id]); // Added game.id to re-evaluate for new games
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -175,10 +186,26 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         {done ? (
           <div>
             <span className="me-2">Marked as done on: {formatDate(done, store.settings.dateFormat)}</span>
-            <button className="btn btn-warning" onClick={() => { setDone(undefined); immediateSave(); }}>Mark as Not Done</button>
+            <button className="btn btn-warning" onClick={() => {
+              const newDoneValue = undefined;
+              setDone(newDoneValue); // Update local state immediately for responsiveness
+              // Directly create the updated game object and save
+              const updatedGame = { ...game, name, deadline, desiredPartners, steamId: parseSteamIdInput(steamIdInput), manualMetadata: { ...(game.manualMetadata || {}), coverUrl }, asks, tags, done: newDoneValue };
+              const newGames = [...store.games];
+              newGames[gameIndex] = updatedGame;
+              setStore({ ...store, games: newGames });
+            }}>Mark as Not Done</button>
           </div>
         ) : (
-          <button className="btn btn-success" onClick={() => { setDone(new Date()); immediateSave(); }}>Mark as Done</button>
+          <button className="btn btn-success" onClick={() => {
+            const newDoneValue = new Date();
+            setDone(newDoneValue); // Update local state immediately for responsiveness
+            // Directly create the updated game object and save
+            const updatedGame = { ...game, name, deadline, desiredPartners, steamId: parseSteamIdInput(steamIdInput), manualMetadata: { ...(game.manualMetadata || {}), coverUrl }, asks, tags, done: newDoneValue };
+            const newGames = [...store.games];
+            newGames[gameIndex] = updatedGame;
+            setStore({ ...store, games: newGames });
+          }}>Mark as Done</button>
         )}
       </div>
       <div className="row mb-3">

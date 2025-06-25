@@ -328,7 +328,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             <div>
             {(() => {
               const today = new Date();
-              const openAsksForPartner = store.games.reduce((acc: {confirmed: string[], unconfirmed: string[]}, currentGame) => {
+                const openAsksForPartner = store.games.reduce((acc: {confirmed: {id: string, name: string}[], unconfirmed: {id: string, name: string}[]}, currentGame) => {
                 if (currentGame.id === game.id) {
                   return acc; // Don't check current game
                 }
@@ -341,24 +341,34 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   ask.partnerId === p?.id
                 ).forEach(ask => {
                   if (ask.confirmed) {
-                    acc.confirmed.push(currentGame.name);
+                      acc.confirmed.push({ id: currentGame.id, name: currentGame.name });
                   } else if ((!gameHasAllNeededConfirmations) && ((!ask.response) || ask.response.trim() == "")) {
-                    acc.unconfirmed.push(currentGame.name);
+                      acc.unconfirmed.push({ id: currentGame.id, name: currentGame.name });
                   }
                 });
                 return acc;
               }, {confirmed: [], unconfirmed: []});
+
+                const formatGameLinks = (games: {id: string, name: string}[]) => {
+                  return games.map((g, index) => (
+                    <React.Fragment key={g.id}>
+                      <Link to={`/games/${g.id}`}>{g.name}</Link>
+                      {index < games.length - 1 ? ', ' : ''}
+                    </React.Fragment>
+                  ));
+                };
+
               if (openAsksForPartner.confirmed.length > 0 || openAsksForPartner.unconfirmed.length > 0) {
+                  const confirmedLinks = openAsksForPartner.confirmed.length > 0 ?
+                    <>streaming [{formatGameLinks(openAsksForPartner.confirmed)}]</> : null;
+                  const unconfirmedLinks = openAsksForPartner.unconfirmed.length > 0 ?
+                    <>waiting for response for [{formatGameLinks(openAsksForPartner.unconfirmed)}]</> : null;
+
                 return (
                   <small className="ms-2 text-muted d-block">
-                    (Already {
-                      [
-                        openAsksForPartner.confirmed.length > 0 ?
-                        `streaming [${openAsksForPartner.confirmed.join(', ')}]` : null,
-                        openAsksForPartner.unconfirmed.length > 0 ?
-                        `waiting for response for [${openAsksForPartner.unconfirmed.join(', ')}]` : null,
-                      ].filter(it => it != null).join(", ")
-                    })
+                      (Already {confirmedLinks}
+                      {confirmedLinks && unconfirmedLinks ? ", " : ""}
+                      {unconfirmedLinks})
                   </small>
                 );
               }

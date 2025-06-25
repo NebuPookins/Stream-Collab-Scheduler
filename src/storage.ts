@@ -5,11 +5,6 @@ import { get, set } from "idb-keyval";
 const LOCAL_KEY = "streamCollabScheduler:data";
 
 export async function loadStore(): Promise<Store> {
-  const raw = localStorage.getItem(LOCAL_KEY);
-  if (raw) {
-    return deserialize(raw);
-  }
-  // fallback to IndexedDB
   const idbVal = await get(LOCAL_KEY);
   if (idbVal) {
     return idbVal as Store;
@@ -20,7 +15,6 @@ export async function loadStore(): Promise<Store> {
 
 export async function saveStore(store: Store) {
   const s = serialize(store);
-  localStorage.setItem(LOCAL_KEY, s);
   // also mirror to IndexedDB
   await set(LOCAL_KEY, store);
 }

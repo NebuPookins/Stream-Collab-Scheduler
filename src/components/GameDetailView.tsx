@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
-import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
+import { saveStore } from '../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
@@ -37,57 +37,54 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   // Local state for game asks, to allow editing
   const [asks, setAsks] = useState<AskRecord[]>(game.asks);
 
-  // This is the primary useEffect for syncing component state with the game prop
-  const firstRenderTagsRef = React.useRef(true); // Ref to track initial tags load
+  const initialLoadComplete = useRef(false);
 
-  React.useEffect(() => {
+  // Effect to reset initialLoadComplete flag when the game prop itself changes
+  useEffect(() => {
+    initialLoadComplete.current = false;
     setName(game.name);
     setDeadline(game.deadline);
     setDesiredPartners(game.desiredPartners);
     setStoreUrlInput(game.storeUrl || '');
     setCoverUrl(game.manualMetadata?.coverUrl);
-    setAsks(game.asks); // Ensure asks are also reset/updated if game prop changes
-
-    // When game prop changes, update tags and mark it as an "initial load" for tags
+    setAsks(game.asks);
     setTags(game.tags || []);
-    firstRenderTagsRef.current = true;
   }, [game]);
 
-  // memoizedSave now includes asks
-  const memoizedSave = useCallback(() => {
-    // const finalSteamId = parseSteamIdInput(steamIdInput); // We don't parse anymore, just save the raw URL
-    const updatedManualMetadata = { ...(game.manualMetadata || {}), coverUrl };
-    // Remove officialName if it exists from old data, ensure coverUrl is updated
-    delete updatedManualMetadata.officialName;
 
+  // useEffect for saving
+  useEffect(() => {
+    if (!initialLoadComplete.current) {
+      // Check if all state variables have been initialized based on 'game' prop
+      // This is a bit of a heuristic, but tries to wait until the first sync from 'game' is done.
+      if (name === game.name && deadline === game.deadline && desiredPartners === game.desiredPartners &&
+          storeUrlInput === (game.storeUrl || '') && coverUrl === game.manualMetadata?.coverUrl &&
+          JSON.stringify(asks) === JSON.stringify(game.asks) && JSON.stringify(tags) === JSON.stringify(game.tags || [])) {
+        initialLoadComplete.current = true;
+      }
+      return; // Don't save on initial load or during the state sync from game prop
+    }
+
+    const updatedManualMetadata = { ...(game.manualMetadata || {}), coverUrl };
+    delete updatedManualMetadata.officialName;
 
     const updatedGame = {
       ...game,
       name,
       deadline,
       desiredPartners,
-      storeUrl: storeUrlInput, // Save the raw input as the store URL
+      storeUrl: storeUrlInput,
       manualMetadata: updatedManualMetadata,
-      asks, // Include the updated asks from local state
+      asks,
       tags,
     };
+
     const newGames = [...store.games];
     newGames[gameIndex] = updatedGame;
-    setStore({ ...store, games: newGames });
-  }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
-
-  // immediateSave now includes asks in dependencies for useAutosave
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
-
-  // Effect to save tags when they are modified by the user
-  React.useEffect(() => {
-    if (firstRenderTagsRef.current) {
-      firstRenderTagsRef.current = false; // Mark initial load as complete
-      return; // Don't save on initial load/sync
-    }
-    // Only save if it's not the initial load
-    immediateSave();
-  }, [tags, immediateSave]); // immediateSave is included as it's a dependency from useAutosave
+    const newStore = { ...store, games: newGames };
+    setStore(newStore); // Update local React state first
+    saveStore(newStore); // Then persist to storage
+  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, game, gameIndex, store, setStore]);
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -153,7 +150,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
       <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
       <div className="row mb-3">
-        <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
+        <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Deadline</label>
@@ -161,7 +158,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           <DatePicker
             selected={deadline}
             onChange={(d) => setDeadline(d || undefined)}
-            onBlur={immediateSave}
             isClearable
             className="form-control"
             dateFormat={getDatePickerFormat(store.settings.dateFormat)}
@@ -171,13 +167,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Desired # Partners</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
+          <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} />
         </div>
       </div>
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Store Page URL</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input className="form-control" value={storeUrlInput} onChange={e => setStoreUrlInput(e.target.value)} onBlur={immediateSave} />
+          <input className="form-control" value={storeUrlInput} onChange={e => setStoreUrlInput(e.target.value)} />
         </div>
       </div>
       <div className="row mb-3">
@@ -187,7 +183,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             className="form-control"
             value={coverUrl || ''}
             onChange={e => setCoverUrl(e.target.value)}
-            onBlur={immediateSave}
             placeholder={steamCoverPlaceholder || ''}
           />
         </div>
@@ -266,7 +261,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 <DatePicker
                   selected={askedOnDate}
                   onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
-                  onBlur={immediateSave}
                   className="form-control form-control-sm d-inline-block"
                   dateFormat={getDatePickerFormat(store.settings.dateFormat)}
                 />
@@ -283,7 +277,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   style={{ width: 'auto', minWidth: '200px' }}
                   value={a.response || ''}
                   onChange={(e) => handleAskChange(index, 'response', e.target.value)}
-                  onBlur={immediateSave}
                 />
               </td>
               <td>
@@ -293,11 +286,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   id={`confirmed-${index}`}
                   checked={a.confirmed}
                   onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
-                  onBlur={immediateSave}
                 />
               </td>
               <td>
-                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); immediateSave(); }}>Delete</button>
+                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); }}>Delete</button>
               </td>
             </tr>
           );

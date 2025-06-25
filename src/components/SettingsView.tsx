@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Store, DateFormatOption } from '../types';
-import { useAutosave } from '../hooks/useAutosave';
+import { saveStore } from '../storage';
 
 interface SettingsProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 
@@ -10,11 +10,33 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   const [darkMode, setDarkMode] = useState(store.settings.darkMode);
   const [dateFormat, setDateFormat] = useState<DateFormatOption>(store.settings.dateFormat);
 
-  const memoizedSave = useCallback(() => {
-    setStore({ ...store, settings: { greyThresholdDays: greyDays, viewMode, darkMode, dateFormat } });
-  }, [store, setStore, greyDays, viewMode, darkMode, dateFormat]);
+  const initialLoadComplete = useRef(false);
 
-  const immediateSave = useAutosave(memoizedSave, [greyDays, viewMode, darkMode, dateFormat]);
+  // Effect to reset initialLoadComplete flag when the store.settings prop itself changes (e.g. after import)
+  useEffect(() => {
+    initialLoadComplete.current = false;
+    setGreyDays(store.settings.greyThresholdDays);
+    setViewMode(store.settings.viewMode);
+    setDarkMode(store.settings.darkMode);
+    setDateFormat(store.settings.dateFormat);
+  }, [store.settings]);
+
+  // useEffect for saving
+  useEffect(() => {
+    if (!initialLoadComplete.current) {
+      // Heuristic to wait for state sync from props
+      if (greyDays === store.settings.greyThresholdDays && viewMode === store.settings.viewMode &&
+          darkMode === store.settings.darkMode && dateFormat === store.settings.dateFormat) {
+        initialLoadComplete.current = true;
+      }
+      return; // Don't save on initial load or during state sync
+    }
+
+    const newSettings = { greyThresholdDays: greyDays, viewMode, darkMode, dateFormat };
+    const newStore = { ...store, settings: newSettings };
+    setStore(newStore);
+    saveStore(newStore);
+  }, [greyDays, viewMode, darkMode, dateFormat, store, setStore]);
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
@@ -39,22 +61,22 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
       <h2>Settings</h2>
       <div className="mb-3">
         <label>Grey threshold (days)</label>
-        <input type="number" className="form-control" value={greyDays} onChange={e => setGreyDays(+e.target.value)} onBlur={immediateSave} />
+        <input type="number" className="form-control" value={greyDays} onChange={e => setGreyDays(+e.target.value)} />
       </div>
       <div className="mb-3">
         <label>View mode</label>
-        <select className="form-select" value={viewMode} onChange={e => setViewMode(e.target.value as any)} onBlur={immediateSave}>
+        <select className="form-select" value={viewMode} onChange={e => setViewMode(e.target.value as any)}>
           <option value="calendar">Calendar</option>
           <option value="list">List</option>
         </select>
       </div>
       <div className="form-check form-switch mb-3">
-        <input className="form-check-input" type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} onBlur={immediateSave} />
+        <input className="form-check-input" type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
         <label className="form-check-label">Dark Mode</label>
       </div>
       <div className="mb-3">
         <label>Date Format</label>
-        <select className="form-select" value={dateFormat} onChange={e => setDateFormat(e.target.value as DateFormatOption)} onBlur={immediateSave}>
+        <select className="form-select" value={dateFormat} onChange={e => setDateFormat(e.target.value as DateFormatOption)}>
           <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
           <option value="MM/DD/YYYY">MM/DD/YYYY</option>
           <option value="DD/MM/YYYY">DD/MM/YYYY</option>

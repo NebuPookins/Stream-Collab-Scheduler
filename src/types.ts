@@ -14,6 +14,7 @@ export interface Game {
   desiredPartners: number;
   asks: AskRecord[];
   tags?: string[];
+  notes?: string;
 }
 
 export interface Partner {

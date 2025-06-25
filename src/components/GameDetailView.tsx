@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
-import { useAutosave } from '../hooks/useAutosave';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
 import { Store, AskRecord, Partner, DateFormatOption } from '../types';
+import { saveStore } from '../../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
@@ -73,21 +73,20 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     };
     const newGames = [...store.games];
     newGames[gameIndex] = updatedGame;
-    setStore({ ...store, games: newGames });
+    const newStore = { ...store, games: newGames };
+    setStore(newStore);
+    saveStore(newStore); // Save immediately
   }, [store, setStore, game, gameIndex, name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
 
-  // immediateSave now includes asks in dependencies for useAutosave
-  const immediateSave = useAutosave(memoizedSave, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags]); // Added asks and tags to dependencies, updated steamIdInput to storeUrlInput
-
   // Effect to save tags when they are modified by the user
-  React.useEffect(() => {
-    if (firstRenderTagsRef.current) {
-      firstRenderTagsRef.current = false; // Mark initial load as complete
-      return; // Don't save on initial load/sync
-    }
-    // Only save if it's not the initial load
-    immediateSave();
-  }, [tags, immediateSave]); // immediateSave is included as it's a dependency from useAutosave
+  // React.useEffect(() => {
+  //   if (firstRenderTagsRef.current) {
+  //     firstRenderTagsRef.current = false; // Mark initial load as complete
+  //     return; // Don't save on initial load/sync
+  //   }
+  //   // Only save if it's not the initial load
+  //   // immediateSave(); // This will now be handled by direct calls to memoizedSave where tags/asks change
+  // }, [tags]); // Removed immediateSave from dependencies
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -109,7 +108,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };
     const updatedAsks = [...asks, newAsk];
     setAsks(updatedAsks);
-    // No direct setStore here, will be handled by useAutosave or immediateSave via memoizedSave
+    memoizedSave();
   };
 
   const handleAskChange = (index: number, field: keyof AskRecord, value: any) => {
@@ -120,11 +119,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       return ask;
     });
     setAsks(updatedAsks);
+    memoizedSave();
   };
 
   const deleteAsk = (index: number) => {
     const updatedAsks = asks.filter((_, i) => i !== index);
     setAsks(updatedAsks);
+    memoizedSave();
     // Consider if immediateSave should be called here or rely on useAutosave
     // For deletion, immediate save is probably better.
     // This will be handled by adding `asks` to useAutosave dependencies and calling immediateSave from the button.
@@ -137,13 +138,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     if (newTagInput && !tags.includes(newTagInput)) {
       setTags([...tags, newTagInput]);
       setNewTagInput('');
-      // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
+      memoizedSave();
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
-    // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
+    memoizedSave();
   };
 
   const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
@@ -153,15 +154,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
       <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
       <div className="row mb-3">
-        <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} onBlur={immediateSave} />
+        <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => { setName(e.target.value); memoizedSave(); }} />
       </div>
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Deadline</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
           <DatePicker
             selected={deadline}
-            onChange={(d) => setDeadline(d || undefined)}
-            onBlur={immediateSave}
+            onChange={(d) => { setDeadline(d || undefined); memoizedSave(); }}
             isClearable
             className="form-control"
             dateFormat={getDatePickerFormat(store.settings.dateFormat)}
@@ -171,13 +171,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Desired # Partners</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input type="number" className="form-control" value={desiredPartners} onChange={e=>setDesiredPartners(+e.target.value)} onBlur={immediateSave} />
+          <input type="number" className="form-control" value={desiredPartners} onChange={e=> { setDesiredPartners(+e.target.value); memoizedSave(); }} />
         </div>
       </div>
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Store Page URL</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <input className="form-control" value={storeUrlInput} onChange={e => setStoreUrlInput(e.target.value)} onBlur={immediateSave} />
+          <input className="form-control" value={storeUrlInput} onChange={e => { setStoreUrlInput(e.target.value); memoizedSave(); }} />
         </div>
       </div>
       <div className="row mb-3">
@@ -186,8 +186,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
           <input
             className="form-control"
             value={coverUrl || ''}
-            onChange={e => setCoverUrl(e.target.value)}
-            onBlur={immediateSave}
+            onChange={e => { setCoverUrl(e.target.value); memoizedSave(); }}
             placeholder={steamCoverPlaceholder || ''}
           />
         </div>
@@ -266,7 +265,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 <DatePicker
                   selected={askedOnDate}
                   onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
-                  onBlur={immediateSave}
+                  // onBlur removed as onChange now saves
                   className="form-control form-control-sm d-inline-block"
                   dateFormat={getDatePickerFormat(store.settings.dateFormat)}
                 />
@@ -283,7 +282,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   style={{ width: 'auto', minWidth: '200px' }}
                   value={a.response || ''}
                   onChange={(e) => handleAskChange(index, 'response', e.target.value)}
-                  onBlur={immediateSave}
+                  // onBlur removed as onChange now saves
                 />
               </td>
               <td>
@@ -293,11 +292,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   id={`confirmed-${index}`}
                   checked={a.confirmed}
                   onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
-                  onBlur={immediateSave}
+                  // onBlur removed as onChange now saves
                 />
               </td>
               <td>
-                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); immediateSave(); }}>Delete</button>
+                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); memoizedSave(); }}>Delete</button>
               </td>
             </tr>
           );

@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
-import { useAutosave } from '../hooks/useAutosave';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import DatePicker from 'react-datepicker';
+import { saveStore } from '../../storage';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, DateFormatOption, Game } from '../types';
 import { getDatePickerFormat } from '../helpers/dateFormatter';
@@ -42,28 +42,10 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const memoizedSave = useCallback(() => {
     const updated = { ...partner, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags };
     const arr = [...store.partners]; arr[idx] = updated;
-    setStore({ ...store, partners: arr });
+    const newStore = { ...store, partners: arr };
+    setStore(newStore);
+    saveStore(newStore);
   }, [store, setStore, partner, idx, name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
-
-  const immediateSave = useAutosave(memoizedSave, [name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags]);
-
-  // Effect to save lovesTags when they are modified by the user
-  React.useEffect(() => {
-    if (initialLovesTagsLoadRef.current) {
-      initialLovesTagsLoadRef.current = false; // Mark initial load as complete
-      return; // Don't save on initial load/sync
-    }
-    immediateSave();
-  }, [lovesTags, immediateSave]);
-
-  // Effect to save hatesTags when they are modified by the user
-  React.useEffect(() => {
-    if (initialHatesTagsLoadRef.current) {
-      initialHatesTagsLoadRef.current = false; // Mark initial load as complete
-      return; // Don't save on initial load/sync
-    }
-    immediateSave();
-  }, [hatesTags, immediateSave]);
 
   // Build calendar events
   const events = store.games.flatMap(g =>
@@ -101,21 +83,21 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {
       setLovesTags([...lovesTags, newLovesTagInput]);
       setNewLovesTagInput('');
-      // immediateSave(); // Handled by useEffect for lovesTags
+      memoizedSave();
     } else if (type === 'hates' && newHatesTagInput && !hatesTags.includes(newHatesTagInput)) {
       setHatesTags([...hatesTags, newHatesTagInput]);
       setNewHatesTagInput('');
-      // immediateSave(); // Handled by useEffect for hatesTags
+      memoizedSave();
     }
   };
 
   const removeTag = (type: 'loves' | 'hates', tagToRemove: string) => {
     if (type === 'loves') {
       setLovesTags(lovesTags.filter(tag => tag !== tagToRemove));
-      // immediateSave(); // Handled by useEffect for lovesTags
+      memoizedSave();
     } else {
       setHatesTags(hatesTags.filter(tag => tag !== tagToRemove));
-      // immediateSave(); // Handled by useEffect for hatesTags
+      memoizedSave();
     }
   };
 
@@ -125,19 +107,19 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       <h2>Partner Details</h2>
       <div className="mb-3">
         <label className="form-label">Name</label>
-        <input className="form-control" value={name} onChange={e=>setName(e.target.value)} onBlur={immediateSave} />
+        <input className="form-control" value={name} onChange={e=>{setName(e.target.value); memoizedSave();}} />
       </div>
       <div className="mb-3">
         <label className="form-label">Last Streamed With</label>
-        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} onBlur={immediateSave} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
+        <DatePicker selected={lastStreamedWith} onChange={d=>{setLastStreamedWith(d||undefined); memoizedSave();}} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
       <div className="mb-3">
         <label className="form-label">Schedule</label>
-        <input className="form-control" value={schedule} onChange={e=>setSchedule(e.target.value)} onBlur={immediateSave} />
+        <input className="form-control" value={schedule} onChange={e=>{setSchedule(e.target.value); memoizedSave();}} />
       </div>
       <div className="mb-3">
         <label className="form-label">Busy Until</label>
-        <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} onBlur={immediateSave} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
+        <DatePicker selected={busyUntil} onChange={d=>{setBusyUntil(d||undefined); memoizedSave();}} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
 
       {/* Loves Tags */}

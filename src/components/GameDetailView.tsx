@@ -9,6 +9,7 @@ import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
+import { marked } from 'marked';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -25,6 +26,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined); // For Steam-derived placeholder
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
+  const [notes, setNotes] = useState(game.notes || '');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -49,6 +52,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setCoverUrl(game.manualMetadata?.coverUrl);
     setAsks(game.asks);
     setTags(game.tags || []);
+    setNotes(game.notes || '');
   }, [game]);
 
 
@@ -59,7 +63,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       // This is a bit of a heuristic, but tries to wait until the first sync from 'game' is done.
       if (name === game.name && deadline === game.deadline && desiredPartners === game.desiredPartners &&
           storeUrlInput === (game.storeUrl || '') && coverUrl === game.manualMetadata?.coverUrl &&
-          JSON.stringify(asks) === JSON.stringify(game.asks) && JSON.stringify(tags) === JSON.stringify(game.tags || [])) {
+          JSON.stringify(asks) === JSON.stringify(game.asks) && JSON.stringify(tags) === JSON.stringify(game.tags || []) &&
+          notes === (game.notes || '')) {
         initialLoadComplete.current = true;
       }
       return; // Don't save on initial load or during the state sync from game prop
@@ -77,6 +82,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       manualMetadata: updatedManualMetadata,
       asks,
       tags,
+      notes,
     };
 
     const newGames = [...store.games];
@@ -84,7 +90,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const newStore = { ...store, games: newGames };
     setStore(newStore); // Update local React state first
     saveStore(newStore); // Then persist to storage
-  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, game, gameIndex, store, setStore]);
+  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, notes, game, gameIndex, store, setStore]);
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -185,6 +191,28 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             onChange={e => setCoverUrl(e.target.value)}
             placeholder={steamCoverPlaceholder || ''}
           />
+        </div>
+      </div>
+
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Notes</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          {isEditingNotes || !notes ? (
+            <textarea
+              className="form-control"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              onBlur={() => setIsEditingNotes(false)}
+              rows={5}
+              placeholder="Enter notes here..."
+            />
+          ) : (
+            <div
+              onClick={() => setIsEditingNotes(true)}
+              dangerouslySetInnerHTML={{ __html: marked(notes) }}
+              style={{ border: '1px solid #ced4da', borderRadius: '.25rem', padding: '.375rem .75rem', minHeight: 'calc(1.5em + .75rem + 2px)' }}
+            />
+          )}
         </div>
       </div>
 

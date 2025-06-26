@@ -1,19 +1,39 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import listPlugin from '@fullcalendar/list';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { saveStore } from '../storage';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Store, AskRecord, DateFormatOption, Game } from '../types';
-import { getDatePickerFormat } from '../helpers/dateFormatter';
+import { Store, AskRecord, DateFormatOption, Game, Partner } from '../types';
+import { getDatePickerFormat, formatDate } from '../helpers/dateFormatter';
 import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
-import { Link } from 'react-router-dom';
+
+// Define interfaces for the combined event types
+interface EventBase {
+  date: Date;
+  key: string;
+}
+
+interface AskRequestEvent extends EventBase {
+  type: 'ask';
+  game: Game;
+  ask: AskRecord;
+}
+
+interface BusyEvent extends EventBase {
+  type: 'busy';
+}
+
+interface GameDoneEvent extends EventBase {
+  type: 'done';
+  game: Game;
+  otherPartners: Partner[];
+}
+
+type PartnerEvent = AskRequestEvent | BusyEvent | GameDoneEvent;
 
 interface PartnerDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) => {
-  const { id } = useParams(); const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>(); const navigate = useNavigate();
   const idx = store.partners.findIndex(p=>p.id===id!);
   if(idx<0) return <div>Not found</div>;
   const partner = store.partners[idx];
@@ -63,12 +83,52 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     saveStore(newStore);
   }, [name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags, partner, idx, store, setStore]);
 
-  // Build calendar events
-  const events = store.games.flatMap(g =>
-    g.asks.filter(a => a.partnerId === id).map(a => ({ title: g.name + (a.confirmed ? ' ✓' : ''), date: a.askedOn.toISOString().split('T')[0] }))
-  );
-  if (lastStreamedWith) events.push({ title: 'Last Stream', date: lastStreamedWith.toISOString().split('T')[0] });
-  if (busyUntil) events.push({ title: 'Busy', date: busyUntil.toISOString().split('T')[0] });
+  const partnerEvents = React.useMemo(() => {
+    const events: PartnerEvent[] = [];
+
+    // Add AskRequests
+    store.games.forEach(game => {
+      game.asks.forEach((ask, askIdx) => {
+        if (ask.partnerId === id) {
+          events.push({
+            type: 'ask',
+            date: ask.askedOn,
+            game,
+            ask,
+            key: `ask-${game.id}-${askIdx}`
+          });
+        }
+      });
+    });
+
+    // Add Busy Until
+    if (partner.busyUntil) {
+      events.push({
+        type: 'busy',
+        date: partner.busyUntil,
+        key: 'busy-until'
+      });
+    }
+
+    // Add Game Done events
+    store.games.forEach(game => {
+      if (game.done && game.asks.some(a => a.partnerId === id && a.confirmed)) {
+        const otherConfirmedPartners = store.partners.filter(p =>
+          p.id !== id && game.asks.some(a => a.partnerId === p.id && a.confirmed)
+        );
+        events.push({
+          type: 'done',
+          date: game.done.date,
+          game,
+          otherPartners: otherConfirmedPartners,
+          key: `done-${game.id}`
+        });
+      }
+    });
+
+    // Sort events chronologically
+    return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [store.games, store.partners, id, partner.busyUntil]);
 
   const relevantGames = React.useMemo(() => {
     return store.games
@@ -198,11 +258,55 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         </div>
       </div>
 
-      <FullCalendar
-        plugins={[dayGridPlugin, listPlugin]}
-        initialView={store.settings.viewMode==='calendar'?'dayGridMonth':'listYear'}
-        events={events}
-      />
+      <div className="mt-4">
+        <h3>Events</h3>
+        {partnerEvents.length > 0 ? (
+          <ul className="list-group">
+            {partnerEvents.map((event) => (
+              <li key={event.key} className="list-group-item">
+                <div className="d-flex w-100 justify-content-between">
+                  <h5 className="mb-1">
+                    {event.type === 'ask' && `Requested: ${event.game.name}`}
+                    {event.type === 'busy' && "Busy Until"}
+                    {event.type === 'done' && `Played: ${event.game.name}`}
+                  </h5>
+                  <small>{formatDate(event.date, store.settings.dateFormat)}</small>
+                </div>
+                {event.type === 'ask' && (
+                  <div>
+                    <p className="mb-1">
+                      Game: <Link to={`/games/${event.game.id}`}>{event.game.name}</Link>
+                      {event.game.manualMetadata?.coverUrl && (
+                        <img src={event.game.manualMetadata.coverUrl} alt={event.game.name} style={{ maxWidth: '50px', marginLeft: '10px', float: 'right' }} />
+                      )}
+                    </p>
+                    <p className="mb-1">Response: {event.ask.response || 'No response yet'}</p>
+                    <p className="mb-1">Confirmed: {event.ask.confirmed ? 'Yes' : 'No'}</p>
+                  </div>
+                )}
+                {event.type === 'done' && (
+                  <div>
+                    <p className="mb-1">
+                      Game: <Link to={`/games/${event.game.id}`}>{event.game.name}</Link>
+                      {event.game.manualMetadata?.coverUrl && (
+                        <img src={event.game.manualMetadata.coverUrl} alt={event.game.name} style={{ maxWidth: '50px', marginLeft: '10px', float: 'right' }} />
+                      )}
+                    </p>
+                    {event.otherPartners.length > 0 && (
+                      <p className="mb-1">
+                        Other Partners: {event.otherPartners.map(p => <Link key={p.id} to={`/partners/${p.id}`} className="me-2">{p.name}</Link>)}
+                      </p>
+                    )}
+                    <p className="mb-1">Notes: {event.game.done?.streamingNotes || 'N/A'}</p>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No events found for this partner.</p>
+        )}
+      </div>
 
       <h3 className="mt-4">Relevant Games ({relevantGames.length})</h3>
       {relevantGames.length > 0 ? (

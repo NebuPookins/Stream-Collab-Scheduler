@@ -143,7 +143,20 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               </Link>
             </th>
             <td>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'}</td>
-            <td>{g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</td>
+            <td>
+              {g.asks
+                .filter(ask => ask.confirmed)
+                .map((ask, index, arr) => {
+                  const partner = store.partners.find(p => p.id === ask.partnerId);
+                  return partner ? (
+                    <React.Fragment key={partner.id}>
+                      <Link to={`/partners/${partner.id}`}>{partner.name}</Link>
+                      {index < arr.length - 1 ? ', ' : ''}
+                    </React.Fragment>
+                  ) : null;
+                })}
+              /{g.desiredPartners}
+            </td>
           </tr>
         ))}
         </tbody>
@@ -190,7 +203,17 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                   {g.done ? formatDate(g.done.date, store.settings.dateFormat) : 'Not done'}
                 </td>
               <td>
-              {confirmedPartners.join(', ')}
+                {g.asks
+                  .filter(ask => ask.confirmed)
+                  .map((ask, index, arr) => {
+                    const partner = store.partners.find(p => p.id === ask.partnerId);
+                    return partner ? (
+                      <React.Fragment key={partner.id}>
+                        <Link to={`/partners/${partner.id}`}>{partner.name}</Link>
+                        {index < arr.length - 1 ? ', ' : ''}
+                      </React.Fragment>
+                    ) : null;
+                  })}
               </td>
             </tr>
           );

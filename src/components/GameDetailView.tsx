@@ -157,6 +157,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setDoneState({ date: new Date(), streamingNotes: '' });
   };
 
+  const handleUnmarkAsDone = () => {
+    setDoneState(undefined);
+  };
+
   const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
 
   return (
@@ -164,8 +168,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
-        {!doneState && (
-          <button className="btn btn-success" onClick={handleMarkAsDone}>Done</button>
+        {doneState ? (
+          <button className="btn btn-warning" onClick={handleUnmarkAsDone}>Unmark Done</button>
+        ) : (
+          <button className="btn btn-success" onClick={handleMarkAsDone}>Mark as Done</button>
         )}
       </div>
       <div className="row mb-3">

@@ -409,8 +409,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 {(() => {
                   const today = new Date();
                     const openAsksForPartner = store.games.reduce((acc: {confirmed: {id: string, name: string}[], unconfirmed: {id: string, name: string}[]}, currentGame) => {
-                    if (currentGame.id === game.id) {
-                      return acc; // Don't check current game
+                    if (currentGame.id === game.id || currentGame.done) { // Exclude current game and done games
+                      return acc;
                     }
                     if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
                       return acc;

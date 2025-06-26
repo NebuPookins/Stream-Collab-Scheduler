@@ -36,7 +36,6 @@ export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "Mon
 
 export interface Settings {
   greyThresholdDays: number;
-  viewMode: "calendar" | "list";
   darkMode: boolean;
   dateFormat: DateFormatOption;
 }

@@ -84,7 +84,10 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
               <td>
                 {pendingEvents.length > 0 ? (
                   pendingEvents.map((event: PendingEvent, index) => (
-                    <div key={index}>{`${event.gameName} (${event.status})`}</div>
+                    <div key={index}>
+                      <Link to={`/games/${event.gameId}`}>{event.gameName}</Link>
+                      {` (${event.status})`}
+                    </div>
                   ))
                 ) : (
                   "None"

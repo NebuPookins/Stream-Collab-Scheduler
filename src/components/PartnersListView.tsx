@@ -2,9 +2,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Partner, Store, DateFormatOption } from '../types';
+import { Partner, Store } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
-import { sortPartners } from '../helpers/partnerSorters';
+import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters'; // Added calculateLastStreamed
 
 interface PartnersListProps {
   store: Store;
@@ -16,7 +16,7 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
 
   // Sort partners using the new helper function.
   // No game-specific tags here, so gameTags argument is undefined.
-  const sortedPartners = sortPartners(store.partners);
+  const sortedPartners = sortPartners(store.partners, store.games); // Pass store.games
 
   const addPartner = () => {
     const newPartner: Partner = {
@@ -51,7 +51,12 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
                   (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
                 </span>
               )}
-              <span>Last streamed: {p.lastStreamedWith ? formatDate(p.lastStreamedWith, store.settings.dateFormat) : 'Never'}</span>
+              <span>Last streamed: {
+                (() => {
+                  const lastStreamedDate = calculateLastStreamed(p, store.games);
+                  return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
+                })()
+              }</span>
             </div>
           </li>
         ))}

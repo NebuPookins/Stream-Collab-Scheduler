@@ -107,10 +107,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     .filter(p => !askedIds.includes(p.id))
     .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline);
 
-  const availablePartners = sortPartners(partnersForConsideration, tags);
+  const availablePartners = sortPartners(partnersForConsideration, store.games, tags); // Pass store.games
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
+  // We don't explicitly sort busyPartners by last streamed date here, but if we did, we'd pass store.games.
+  // The current sort for busyPartners is implicitly by name if their busyUntil dates are the same or not a factor.
+  // If a different sort order for busyPartners that considers lastStreamed is needed, this is where it would change.
+  // For now, only availablePartners sorting is explicitly mentioned as needing the change in the plan.
 
   const askPartner = (pid: string) => {
     const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };

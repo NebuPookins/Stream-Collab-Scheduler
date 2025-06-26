@@ -41,26 +41,39 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
         <button className="btn btn-sm btn-primary" onClick={addPartner}>+ Add Partner</button>
       </div>
 
-      <ul className="list-group">
+      <table className="table table-striped table-hover mb-4">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Busy Until</th>
+            <th scope="col">Last Streamed</th>
+          </tr>
+        </thead>
+        <tbody>
         {sortedPartners.map(p => (
-          <li key={p.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <Link to={`/partners/${p.id}`}>{p.name}</Link>
-            <div>
+          <tr key={p.id}>
+            <th scope="row">
+              <Link to={`/partners/${p.id}`}>{p.name}</Link>
+            </th>
+            <td>
               {p.busyUntil && new Date(p.busyUntil) > new Date() && (
                 <span className="me-2 text-muted">
                   (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
                 </span>
               )}
-              <span>Last streamed: {
+            </td>
+            <td>
+              {
                 (() => {
                   const lastStreamedDate = calculateLastStreamed(p, store.games);
                   return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
                 })()
-              }</span>
-            </div>
-          </li>
+              }
+            </td>
+          </tr>
         ))}
-      </ul>
+        </tbody>
+      </table>
     </div>
   );
 };

@@ -56,11 +56,17 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
               <Link to={`/partners/${p.id}`}>{p.name}</Link>
             </th>
             <td>
-              {p.busyUntil && new Date(p.busyUntil) > new Date() && (
-                <span className="me-2 text-muted">
-                  (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
+              {
+              (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
+                <span>
+                  {formatDate(p.busyUntil, store.settings.dateFormat)}
                 </span>
-              )}
+              ):(
+                <span>
+                  Available
+                </span>
+              )
+              }
             </td>
             <td>
               {

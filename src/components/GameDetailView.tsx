@@ -28,6 +28,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [newTagInput, setNewTagInput] = useState('');
   const [notes, setNotes] = useState(game.notes || '');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [doneState, setDoneState] = useState(game.done);
+  const [isEditingStreamingNotes, setIsEditingStreamingNotes] = useState(false);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -53,6 +55,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setAsks(game.asks);
     setTags(game.tags || []);
     setNotes(game.notes || '');
+    setDoneState(game.done);
   }, [game]);
 
 
@@ -64,7 +67,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       if (name === game.name && deadline === game.deadline && desiredPartners === game.desiredPartners &&
           storeUrlInput === (game.storeUrl || '') && coverUrl === game.manualMetadata?.coverUrl &&
           JSON.stringify(asks) === JSON.stringify(game.asks) && JSON.stringify(tags) === JSON.stringify(game.tags || []) &&
-          notes === (game.notes || '')) {
+          notes === (game.notes || '') && JSON.stringify(doneState) === JSON.stringify(game.done)) {
         initialLoadComplete.current = true;
       }
       return; // Don't save on initial load or during the state sync from game prop
@@ -83,6 +86,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       asks,
       tags,
       notes,
+      done: doneState,
     };
 
     const newGames = [...store.games];
@@ -90,7 +94,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const newStore = { ...store, games: newGames };
     setStore(newStore); // Update local React state first
     saveStore(newStore); // Then persist to storage
-  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, notes, game, gameIndex, store, setStore]);
+  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, notes, doneState, game, gameIndex, store, setStore]);
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -149,12 +153,27 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
   };
 
+  const handleMarkAsDone = () => {
+    setDoneState({ date: new Date(), streamingNotes: '' });
+  };
+
+  const handleUnmarkAsDone = () => {
+    setDoneState(undefined);
+  };
+
   const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
 
   return (
     <div>
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
-      <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
+        {doneState ? (
+          <button className="btn btn-warning" onClick={handleUnmarkAsDone}>Unmark Done</button>
+        ) : (
+          <button className="btn btn-success" onClick={handleMarkAsDone}>Mark as Done</button>
+        )}
+      </div>
       <div className="row mb-3">
         <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
       </div>
@@ -247,176 +266,211 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         </div>
       </div>
 
-      <h3>Asked</h3>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Partner</th>
-            <th>Asked on</th>
-            <th>Response</th>
-            <th>Confirmed</th>
-            <th>Delete</th>
-          </tr>
-        </thead>
-        <tbody>
-        {asks.sort((a,b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime()).map((a, index) => {
-          const partner = store.partners.find(p=>p.id===a.partnerId);
-          // Ensure askedOn is a Date object for DatePicker
-          const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
-          const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
+      {doneState && doneState.date ? (
+        <div>
+          <h3>Streamed with ({formatDate(new Date(doneState.date), store.settings.dateFormat)})</h3>
+          <ul className="list-group mb-3">
+            {asks.filter(a => a.confirmed).map(a => {
+              const partner = store.partners.find(p => p.id === a.partnerId);
+              return (
+                <li key={a.partnerId} className="list-group-item">
+                  {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
+                </li>
+              );
+            })}
+          </ul>
+          <h4>Streaming Notes</h4>
+          {isEditingStreamingNotes || !doneState.streamingNotes ? (
+            <textarea
+              className="form-control"
+              value={doneState.streamingNotes}
+              onChange={e => setDoneState({ ...doneState, streamingNotes: e.target.value })}
+              onBlur={() => setIsEditingStreamingNotes(false)}
+              rows={5}
+              placeholder="Enter stream notes here (markdown)..."
+            />
+          ) : (
+            <div
+              onClick={() => setIsEditingStreamingNotes(true)}
+              dangerouslySetInnerHTML={{ __html: marked(doneState.streamingNotes) }}
+              style={{ border: '1px solid #ced4da', borderRadius: '.25rem', padding: '.375rem .75rem', minHeight: 'calc(1.5em + .75rem + 2px)' }}
+            />
+          )}
+        </div>
+      ) : (
+        <>
+          <h3>Asked</h3>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Partner</th>
+                <th>Asked on</th>
+                <th>Response</th>
+                <th>Confirmed</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody>
+            {asks.sort((a,b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime()).map((a, index) => {
+              const partner = store.partners.find(p=>p.id===a.partnerId);
+              // Ensure askedOn is a Date object for DatePicker
+              const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
+              const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
 
-          const tagFeedback = partner && tags.length > 0 ? (
-            <>
-              {tags.map(tag => {
-                if (partner.lovesTags?.includes(tag)) {
-                  return <span key={`${partner.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
-                }
-                if (partner.hatesTags?.includes(tag)) {
-                  return <span key={`${partner.id}-hates-${tag}`} title={`Hates: ${tag}`}>🗑️</span>;
-                }
-                return null;
-              })}
-            </>
-          ) : null;
+              const tagFeedback = partner && tags.length > 0 ? (
+                <>
+                  {tags.map(tag => {
+                    if (partner.lovesTags?.includes(tag)) {
+                      return <span key={`${partner.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
+                    }
+                    if (partner.hatesTags?.includes(tag)) {
+                      return <span key={`${partner.id}-hates-${tag}`} title={`Hates: ${tag}`}>🗑️</span>;
+                    }
+                    return null;
+                  })}
+                </>
+              ) : null;
 
-          return (
-            <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
-              <th scope="row">
-                {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
-                {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
-              </th>
-              <td>
-                <DatePicker
-                  selected={askedOnDate}
-                  onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
-                  className="form-control form-control-sm d-inline-block"
-                  dateFormat={getDatePickerFormat(store.settings.dateFormat)}
-                />
-                {askedOnDate instanceof Date && !isNaN(askedOnDate.getTime()) ? (
-                  <small className="ms-2 text-muted">
-                    {formatDistanceToNow(askedOnDate, { addSuffix: true })}
-                  </small>
-                ) : null}
-                </td>
-                <td>
-                <input
-                  type="text"
-                  className="form-control form-control-sm d-inline-block"
-                  style={{ width: 'auto', minWidth: '200px' }}
-                  value={a.response || ''}
-                  onChange={(e) => handleAskChange(index, 'response', e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id={`confirmed-${index}`}
-                  checked={a.confirmed}
-                  onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
-                />
-              </td>
-              <td>
-                <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); }}>Delete</button>
-              </td>
-            </tr>
-          );
-        })}
-        </tbody>
-      </table>
+              return (
+                <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
+                  <th scope="row">
+                    {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
+                    {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
+                  </th>
+                  <td>
+                    <DatePicker
+                      selected={askedOnDate}
+                      onChange={(date) => handleAskChange(index, 'askedOn', date || new Date())}
+                      className="form-control form-control-sm d-inline-block"
+                      dateFormat={getDatePickerFormat(store.settings.dateFormat)}
+                    />
+                    {askedOnDate instanceof Date && !isNaN(askedOnDate.getTime()) ? (
+                      <small className="ms-2 text-muted">
+                        {formatDistanceToNow(askedOnDate, { addSuffix: true })}
+                      </small>
+                    ) : null}
+                    </td>
+                    <td>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm d-inline-block"
+                      style={{ width: 'auto', minWidth: '200px' }}
+                      value={a.response || ''}
+                      onChange={(e) => handleAskChange(index, 'response', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id={`confirmed-${index}`}
+                      checked={a.confirmed}
+                      onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
+                    />
+                  </td>
+                  <td>
+                    <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); }}>Delete</button>
+                  </td>
+                </tr>
+              );
+            })}
+            </tbody>
+          </table>
 
-      <h3>Available</h3>
-      <ul className="list-group mb-3">
-        {availablePartners.map(p => {
-          const tagFeedback = tags.length > 0 ? (
-            <>
-              {tags.map(tag => {
-                if (p.lovesTags?.includes(tag)) {
-                  return <span key={`${p.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
-                }
-                if (p.hatesTags?.includes(tag)) {
-                  return <span key={`${p.id}-hates-${tag}`} title={`Hates: ${tag}`}>👎🏻</span>;
-                }
-                return null;
-              })}
-            </>
-          ) : null;
+          <h3>Available</h3>
+          <ul className="list-group mb-3">
+            {availablePartners.map(p => {
+              const tagFeedback = tags.length > 0 ? (
+                <>
+                  {tags.map(tag => {
+                    if (p.lovesTags?.includes(tag)) {
+                      return <span key={`${p.id}-loves-${tag}`} title={`Loves: ${tag}`}>❤️</span>;
+                    }
+                    if (p.hatesTags?.includes(tag)) {
+                      return <span key={`${p.id}-hates-${tag}`} title={`Hates: ${tag}`}>👎🏻</span>;
+                    }
+                    return null;
+                  })}
+                </>
+              ) : null;
 
-          return (
-          <li key={p.id} className="list-group-item d-flex justify-content-between">
-            <div>
-              <Link to={`/partners/${p.id}`}>{p.name}</Link>
-              {p.busyUntil && new Date(p.busyUntil) > new Date() && (
-                <span className="ms-1 text-muted">
-                  (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
-                </span>
-              )}
-              {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
-            </div>
-            <div>
-            {(() => {
-              const today = new Date();
-                const openAsksForPartner = store.games.reduce((acc: {confirmed: {id: string, name: string}[], unconfirmed: {id: string, name: string}[]}, currentGame) => {
-                if (currentGame.id === game.id) {
-                  return acc; // Don't check current game
-                }
-                if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
-                  return acc;
-                }
-                const gameHasAllNeededConfirmations = currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length;
+              return (
+              <li key={p.id} className="list-group-item d-flex justify-content-between">
+                <div>
+                  <Link to={`/partners/${p.id}`}>{p.name}</Link>
+                  {p.busyUntil && new Date(p.busyUntil) > new Date() && (
+                    <span className="ms-1 text-muted">
+                      (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
+                    </span>
+                  )}
+                  {tagFeedback && <span className="ms-2">{tagFeedback}</span>}
+                </div>
+                <div>
+                {(() => {
+                  const today = new Date();
+                    const openAsksForPartner = store.games.reduce((acc: {confirmed: {id: string, name: string}[], unconfirmed: {id: string, name: string}[]}, currentGame) => {
+                    if (currentGame.id === game.id) {
+                      return acc; // Don't check current game
+                    }
+                    if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
+                      return acc;
+                    }
+                    const gameHasAllNeededConfirmations = currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length;
 
-                currentGame.asks.filter(ask =>
-                  ask.partnerId === p?.id
-                ).forEach(ask => {
-                  if (ask.confirmed) {
-                      acc.confirmed.push({ id: currentGame.id, name: currentGame.name });
-                  } else if ((!gameHasAllNeededConfirmations) && ((!ask.response) || ask.response.trim() == "")) {
-                      acc.unconfirmed.push({ id: currentGame.id, name: currentGame.name });
+                    currentGame.asks.filter(ask =>
+                      ask.partnerId === p?.id
+                    ).forEach(ask => {
+                      if (ask.confirmed) {
+                          acc.confirmed.push({ id: currentGame.id, name: currentGame.name });
+                      } else if ((!gameHasAllNeededConfirmations) && ((!ask.response) || ask.response.trim() == "")) {
+                          acc.unconfirmed.push({ id: currentGame.id, name: currentGame.name });
+                      }
+                    });
+                    return acc;
+                  }, {confirmed: [], unconfirmed: []});
+
+                    const formatGameLinks = (games: {id: string, name: string}[]) => {
+                      return games.map((g, index) => (
+                        <React.Fragment key={g.id}>
+                          <Link to={`/games/${g.id}`}>{g.name}</Link>
+                          {index < games.length - 1 ? ', ' : ''}
+                        </React.Fragment>
+                      ));
+                    };
+
+                  if (openAsksForPartner.confirmed.length > 0 || openAsksForPartner.unconfirmed.length > 0) {
+                      const confirmedLinks = openAsksForPartner.confirmed.length > 0 ?
+                        <>streaming [{formatGameLinks(openAsksForPartner.confirmed)}]</> : null;
+                      const unconfirmedLinks = openAsksForPartner.unconfirmed.length > 0 ?
+                        <>waiting for response for [{formatGameLinks(openAsksForPartner.unconfirmed)}]</> : null;
+
+                    return (
+                      <small className="ms-2 text-muted d-block">
+                          (Already {confirmedLinks}
+                          {confirmedLinks && unconfirmedLinks ? ", " : ""}
+                          {unconfirmedLinks})
+                      </small>
+                    );
                   }
-                });
-                return acc;
-              }, {confirmed: [], unconfirmed: []});
+                  return null;
+                })()}
+                </div>
+                <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
+              </li>
+              );
+            })}
+          </ul>
 
-                const formatGameLinks = (games: {id: string, name: string}[]) => {
-                  return games.map((g, index) => (
-                    <React.Fragment key={g.id}>
-                      <Link to={`/games/${g.id}`}>{g.name}</Link>
-                      {index < games.length - 1 ? ', ' : ''}
-                    </React.Fragment>
-                  ));
-                };
-
-              if (openAsksForPartner.confirmed.length > 0 || openAsksForPartner.unconfirmed.length > 0) {
-                  const confirmedLinks = openAsksForPartner.confirmed.length > 0 ?
-                    <>streaming [{formatGameLinks(openAsksForPartner.confirmed)}]</> : null;
-                  const unconfirmedLinks = openAsksForPartner.unconfirmed.length > 0 ?
-                    <>waiting for response for [{formatGameLinks(openAsksForPartner.unconfirmed)}]</> : null;
-
-                return (
-                  <small className="ms-2 text-muted d-block">
-                      (Already {confirmedLinks}
-                      {confirmedLinks && unconfirmedLinks ? ", " : ""}
-                      {unconfirmedLinks})
-                  </small>
-                );
-              }
-              return null;
-            })()}
-            </div>
-            <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
-          </li>
-          );
-        })}
-      </ul>
-
-      <h3>Busy</h3>
-      <ul className="list-group">
-        {busyPartners.map(p => (
-          <li key={p.id} className="list-group-item text-muted">
-            <Link to={`/partners/${p.id}`} className="text-muted">{p.name}</Link> (busy until {p.busyUntil ? formatDate(p.busyUntil, store.settings.dateFormat) : ''})
-          </li>
-        ))}
-      </ul>
+          <h3>Busy</h3>
+          <ul className="list-group">
+            {busyPartners.map(p => (
+              <li key={p.id} className="list-group-item text-muted">
+                <Link to={`/partners/${p.id}`} className="text-muted">{p.name}</Link> (busy until {p.busyUntil ? formatDate(p.busyUntil, store.settings.dateFormat) : ''})
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 };

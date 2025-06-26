@@ -15,6 +15,10 @@ export interface Game {
   asks: AskRecord[];
   tags?: string[];
   notes?: string;
+  done?: {
+    date: Date;
+    streamingNotes: string;
+  };
 }
 
 export interface Partner {

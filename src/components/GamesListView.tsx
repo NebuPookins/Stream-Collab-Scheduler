@@ -55,10 +55,74 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         <button className="btn btn-sm btn-primary" onClick={addGame}>+ Add Game</button>
       </div>
 
-      <ul className="list-group mb-4">
-        {unmet.sort(sortByDeadline).map(g => (
-          <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <div>
+      <table className="table table-striped table-hover mb-4">
+        <thead>
+          <tr>
+            <th scope="col">Game</th>
+            <th scope="col">Deadline</th>
+            <th scope="col">Confirmed</th>
+            <th scope="col">Pending Asks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {unmet.sort(sortByDeadline).map(g => (
+            <tr key={g.id}>
+              <th scope="row">
+                <Link to={`/games/${g.id}`}>
+                  {(() => {
+                    let imageUrl = g.manualMetadata?.coverUrl;
+                    if (!imageUrl && g.storeUrl) {
+                      const steamAppId = getSteamAppIdFromUrl(g.storeUrl);
+                      imageUrl = getSteamCoverUrl(steamAppId);
+                      // If not a steam URL or no app ID, imageUrl will be undefined, so no image will be shown unless manually provided.
+                    }
+                    return imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={g.name}
+                        style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
+                      />
+                    ) : null;
+                  })()}
+                  {g.name}
+                </Link>
+              </th>
+              <td>
+                {g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'}
+              </td>
+              <td>
+                {g.asks.filter(a => a.confirmed).length}/{g.desiredPartners}
+              </td>
+              <td>
+                {(() => {
+                  const recentAsks = g.asks.filter(a => {
+                    const today = new Date();
+                    const askedDate = new Date(a.askedOn);
+                    const diffTime = Math.abs(today.getTime() - askedDate.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return !a.confirmed && diffDays <= store.settings.greyThresholdDays && (!a.response || a.response.trim() === '');
+                  }).length;
+                  return recentAsks.toString();
+                })()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h2>Collabs Partners Ready</h2>
+      <table className="table table-striped table-hover mb-4">
+        <thead>
+          <tr>
+            <th scope="col">Game</th>
+            <th scope="col">Deadline</th>
+            <th scope="col">Partners</th>
+          </tr>
+        </thead>
+        <tbody>
+        {met.sort(sortByDeadline).map(g => (
+          <tr key={g.id}>
+            <th scope="row">
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>
               {(() => {
                 let imageUrl = g.manualMetadata?.coverUrl;
@@ -77,54 +141,24 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               })()}
               {g.name}
               </Link>
-            </div>
-            <small>
-              {g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} |
-              {g.asks.filter(a => a.confirmed).length}/{g.desiredPartners}
-              {(() => {
-                const recentAsks = g.asks.filter(a => {
-                  const today = new Date();
-                  const askedDate = new Date(a.askedOn);
-                  const diffTime = Math.abs(today.getTime() - askedDate.getTime());
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  return !a.confirmed && diffDays <= store.settings.greyThresholdDays && (!a.response || a.response.trim() === '');
-                }).length;
-                return recentAsks > 0 ? ` (${recentAsks} recent pending asks)` : '';
-              })()}
-            </small>
-          </li>
+            </th>
+            <td>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'}</td>
+            <td>{g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</td>
+          </tr>
         ))}
-      </ul>
+        </tbody>
+      </table>
 
-      <h2>Collabs planned</h2>
-      <ul className="list-group">
-        {met.sort(sortByDeadline).map(g => (
-          <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              {(() => {
-                let imageUrl = g.manualMetadata?.coverUrl;
-                if (!imageUrl && g.storeUrl) {
-                  const steamAppId = getSteamAppIdFromUrl(g.storeUrl);
-                  imageUrl = getSteamCoverUrl(steamAppId);
-                  // If not a steam URL or no app ID, imageUrl will be undefined, so no image will be shown unless manually provided.
-                }
-                return imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={g.name}
-                    style={{ width: '50px', height: 'auto', marginRight: '10px', verticalAlign: 'middle' }}
-                  />
-                ) : null;
-              })()}
-              <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
-            </div>
-            <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
-          </li>
-        ))}
-      </ul>
-
-      <h2>Done Games</h2>
-      <ul className="list-group">
+      <h2>Collabs Done</h2>
+      <table className="table table-striped table-hover mb-4">
+        <thead>
+          <tr>
+            <th scope="col">Game</th>
+            <th scope="col">Date Streamed</th>
+            <th scope="col">Partners</th>
+          </tr>
+        </thead>
+        <tbody>
         {doneGames.map(g => {
           const confirmedPartners = g.asks
             .filter(ask => ask.confirmed)
@@ -132,9 +166,9 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
             .filter(name => name !== undefined);
 
           return (
-            <li key={g.id} className="list-group-item">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
+            <tr key={g.id}>
+              <th scope="row">
+                <Link to={`/games/${g.id}`}>
                   {(() => {
                     let imageUrl = g.manualMetadata?.coverUrl;
                     if (!imageUrl && g.storeUrl) {
@@ -149,19 +183,20 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                       />
                     ) : null;
                   })()}
-                  <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
-                </div>
-                <small>{g.done ? `Done on: ${formatDate(g.done.date, store.settings.dateFormat)}` : 'Not done'}</small>
-              </div>
-              {confirmedPartners.length > 0 && (
-                <div style={{ marginLeft: '60px', fontSize: '0.9em', color: 'grey' }}>
-                  Confirmed Partners: {confirmedPartners.join(', ')}
-                </div>
-              )}
-            </li>
+                  {g.name}
+                  </Link>
+                </th>
+                <td>
+                  {g.done ? formatDate(g.done.date, store.settings.dateFormat) : 'Not done'}
+                </td>
+              <td>
+              {confirmedPartners.join(', ')}
+              </td>
+            </tr>
           );
         })}
-      </ul>
+      </tbody>
+      </table>
     </div>
   );
 };

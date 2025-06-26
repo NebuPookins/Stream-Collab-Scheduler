@@ -154,8 +154,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                       {index < arr.length - 1 ? ', ' : ''}
                     </React.Fragment>
                   ) : null;
-                })}
-              /{g.desiredPartners}
+                })}&nbsp;/&nbsp;{g.desiredPartners}
             </td>
           </tr>
         ))}

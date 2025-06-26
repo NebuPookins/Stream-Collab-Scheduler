@@ -1,4 +1,3 @@
-// src/components/GamesListView.tsx
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -60,6 +59,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         {unmet.sort(sortByDeadline).map(g => (
           <li key={g.id} className="list-group-item d-flex justify-content-between align-items-center">
             <div>
+              <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>
               {(() => {
                 let imageUrl = g.manualMetadata?.coverUrl;
                 if (!imageUrl && g.storeUrl) {
@@ -75,7 +75,8 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                   />
                 ) : null;
               })()}
-              <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
+              {g.name}
+              </Link>
             </div>
             <small>
               {g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} |

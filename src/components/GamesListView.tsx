@@ -77,7 +77,20 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               })()}
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>{g.name}</Link>
             </div>
-            <small>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} | {g.asks.filter(a=>a.confirmed).length}/{g.desiredPartners}</small>
+            <small>
+              {g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'} |
+              {g.asks.filter(a => a.confirmed).length}/{g.desiredPartners}
+              {(() => {
+                const recentAsks = g.asks.filter(a => {
+                  const today = new Date();
+                  const askedDate = new Date(a.askedOn);
+                  const diffTime = Math.abs(today.getTime() - askedDate.getTime());
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return !a.confirmed && diffDays <= store.settings.greyThresholdDays;
+                }).length;
+                return recentAsks > 0 ? ` (${recentAsks} recent pending asks)` : '';
+              })()}
+            </small>
           </li>
         ))}
       </ul>

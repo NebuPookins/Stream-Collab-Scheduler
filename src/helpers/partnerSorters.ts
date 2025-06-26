@@ -1,8 +1,32 @@
-import { Partner } from '../types';
+import { Partner, Game } from '../types';
 import { calculateGameScoreForPartner } from './tagUtils';
+
+export const calculateLastStreamed = (partner: Partner, games: Game[]): Date | undefined => {
+  const dates: Date[] = [];
+
+  if (partner.lastStreamedWith) {
+    dates.push(new Date(partner.lastStreamedWith));
+  }
+
+  games.forEach(game => {
+    if (game.done && game.done.date) {
+      const confirmedAsk = game.asks.find(ask => ask.partnerId === partner.id && ask.confirmed);
+      if (confirmedAsk) {
+        dates.push(new Date(game.done.date));
+      }
+    }
+  });
+
+  if (dates.length === 0) {
+    return undefined;
+  }
+
+  return new Date(Math.max(...dates.map(date => date.getTime())));
+};
 
 export const sortPartners = (
   partners: Partner[],
+  games: Game[], // Added games array
   gameTags?: string[]
 ): Partner[] => {
   const now = new Date();
@@ -12,35 +36,35 @@ export const sortPartners = (
     const aIsAvailable = !a.busyUntil || new Date(a.busyUntil) <= now;
     const bIsAvailable = !b.busyUntil || new Date(b.busyUntil) <= now;
 
-    if (aIsAvailable && !bIsAvailable) return -1; // a is available, b is not -> a comes first
-    if (!aIsAvailable && bIsAvailable) return 1;  // b is available, a is not -> b comes first
+    if (aIsAvailable && !bIsAvailable) return -1;
+    if (!aIsAvailable && bIsAvailable) return 1;
 
-    // If both are not available (i.e., busyUntil is in the future)
     if (!aIsAvailable && !bIsAvailable && a.busyUntil && b.busyUntil) {
       const busyUntilComparison = new Date(a.busyUntil).getTime() - new Date(b.busyUntil).getTime();
-      if (busyUntilComparison !== 0) return busyUntilComparison; // Sort by date ascending
+      if (busyUntilComparison !== 0) return busyUntilComparison;
     }
-    // If both are available (past or null busyUntil), or if future busyUntil dates are tied, proceed to next sort criterion.
 
     // Secondary sort: game score (descending) - only if gameTags are provided
     if (gameTags && gameTags.length > 0) {
       const scoreA = calculateGameScoreForPartner(gameTags, a.lovesTags, a.hatesTags);
       const scoreB = calculateGameScoreForPartner(gameTags, b.lovesTags, b.hatesTags);
-
       if (scoreA !== scoreB) {
         return scoreB - scoreA; // Higher score comes first
       }
     }
 
-    // Tertiary sort: by last streamed ascending (earlier/never streamed comes first)
-    const lastStreamedA = a.lastStreamedWith ? new Date(a.lastStreamedWith).getTime() : 0; // Treat null/undefined as very old (0)
-    const lastStreamedB = b.lastStreamedWith ? new Date(b.lastStreamedWith).getTime() : 0; // Treat null/undefined as very old (0)
+    // Tertiary sort: by calculated last streamed ascending (earlier/never streamed comes first)
+    const lastStreamedA = calculateLastStreamed(a, games);
+    const lastStreamedB = calculateLastStreamed(b, games);
 
-    if (lastStreamedA !== lastStreamedB) {
-      return lastStreamedA - lastStreamedB;
+    const timeA = lastStreamedA ? lastStreamedA.getTime() : 0; // Treat undefined as very old (0)
+    const timeB = lastStreamedB ? lastStreamedB.getTime() : 0; // Treat undefined as very old (0)
+
+    if (timeA !== timeB) {
+      return timeA - timeB; // Earlier date (smaller time value) comes first
     }
 
-    // Fallback sort: by name, ascending, for stable sort if all other criteria are equal
+    // Fallback sort: by name, ascending
     return a.name.localeCompare(b.name);
   });
 };

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Store, DateFormatOption } from '../types';
 import { saveStore } from '../storage';
+import { deserialize } from '../helpers/serializers';
 
 interface SettingsProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 
@@ -50,7 +51,16 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { try { const data = JSON.parse(reader.result as string); setStore(data); } catch {} };
+    reader.onload = () => {
+      try {
+        const fileContent = reader.result as string;
+        const data = deserialize(fileContent);
+        setStore(data);
+      } catch (error) {
+        console.error("Failed to parse imported JSON:", error);
+        // Optionally, inform the user about the error e.g. using a toast notification
+      }
+    };
     reader.readAsText(file);
   };
 

@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
-import { Store, AskRecord, Partner, DateFormatOption } from '../types';
+import { Store, AskRecord } from '../types';
 import { saveStore } from '../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
@@ -20,10 +20,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [name, setName] = useState(game.name);
   const [deadline, setDeadline] = useState<Date | undefined>(game.deadline);
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
-  // storeUrlInput stores the raw value from the text field
-  const [storeUrlInput, setStoreUrlInput] = useState(game.storeUrl || ''); // Initialize with game.storeUrl
-  const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl); // User's manual input
-  const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined); // For Steam-derived placeholder
+  const [storeUrlInput, setStoreUrlInput] = useState(game.storeUrl || '');
+  const [coverUrl, setCoverUrl] = useState(game.manualMetadata?.coverUrl);
+  const [steamCoverPlaceholder, setSteamCoverPlaceholder] = useState<string | undefined>(undefined);
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
   const [notes, setNotes] = useState(game.notes || '');
@@ -74,7 +73,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     }
 
     const updatedManualMetadata = { ...(game.manualMetadata || {}), coverUrl };
-    delete updatedManualMetadata.officialName;
 
     const updatedGame = {
       ...game,
@@ -98,8 +96,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
 
   const askedIds = asks.map(a => a.partnerId);
-  // const asked = asks.sort((a, b) => new Date(a.askedOn).getTime() - new Date(b.askedOn).getTime());
-  // Sorting directly in the map function to ensure stable keys if dates are equal or invalid
   const now = new Date();
   const greyThreshold = store.settings.greyThresholdDays;
 
@@ -107,14 +103,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     .filter(p => !askedIds.includes(p.id))
     .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline);
 
-  const availablePartners = sortPartners(partnersForConsideration, store.games, tags); // Pass store.games
+  const availablePartners = sortPartners(partnersForConsideration, store.games, tags);
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
-  // We don't explicitly sort busyPartners by last streamed date here, but if we did, we'd pass store.games.
-  // The current sort for busyPartners is implicitly by name if their busyUntil dates are the same or not a factor.
-  // If a different sort order for busyPartners that considers lastStreamed is needed, this is where it would change.
-  // For now, only availablePartners sorting is explicitly mentioned as needing the change in the plan.
 
   const askPartner = (pid: string) => {
     const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };
@@ -136,9 +128,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const deleteAsk = (index: number) => {
     const updatedAsks = asks.filter((_, i) => i !== index);
     setAsks(updatedAsks);
-    // Consider if immediateSave should be called here or rely on useAutosave
-    // For deletion, immediate save is probably better.
-    // This will be handled by adding `asks` to useAutosave dependencies and calling immediateSave from the button.
   };
 
   const labelBoostrapColumns = 3;
@@ -148,13 +137,11 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     if (newTagInput && !tags.includes(newTagInput)) {
       setTags([...tags, newTagInput]);
       setNewTagInput('');
-      // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
-    // immediateSave(); // Removed: useAutosave will trigger due to 'tags' dependency change
   };
 
   const handleMarkAsDone = () => {

@@ -86,7 +86,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                   const askedDate = new Date(a.askedOn);
                   const diffTime = Math.abs(today.getTime() - askedDate.getTime());
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  return !a.confirmed && diffDays <= store.settings.greyThresholdDays;
+                  return !a.confirmed && diffDays <= store.settings.greyThresholdDays && (!a.response || a.response.trim() === '');
                 }).length;
                 return recentAsks > 0 ? ` (${recentAsks} recent pending asks)` : '';
               })()}

@@ -6,7 +6,6 @@ interface SettingsProps { store: Store; setStore: React.Dispatch<React.SetStateA
 
 const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   const [greyDays, setGreyDays] = useState(store.settings.greyThresholdDays);
-  const [viewMode, setViewMode] = useState(store.settings.viewMode);
   const [darkMode, setDarkMode] = useState(store.settings.darkMode);
   const [dateFormat, setDateFormat] = useState<DateFormatOption>(store.settings.dateFormat);
 
@@ -16,7 +15,6 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   useEffect(() => {
     initialLoadComplete.current = false;
     setGreyDays(store.settings.greyThresholdDays);
-    setViewMode(store.settings.viewMode);
     setDarkMode(store.settings.darkMode);
     setDateFormat(store.settings.dateFormat);
   }, [store.settings]);
@@ -25,18 +23,18 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   useEffect(() => {
     if (!initialLoadComplete.current) {
       // Heuristic to wait for state sync from props
-      if (greyDays === store.settings.greyThresholdDays && viewMode === store.settings.viewMode &&
+      if (greyDays === store.settings.greyThresholdDays &&
           darkMode === store.settings.darkMode && dateFormat === store.settings.dateFormat) {
         initialLoadComplete.current = true;
       }
       return; // Don't save on initial load or during state sync
     }
 
-    const newSettings = { greyThresholdDays: greyDays, viewMode, darkMode, dateFormat };
+    const newSettings = { greyThresholdDays: greyDays, darkMode, dateFormat };
     const newStore = { ...store, settings: newSettings };
     setStore(newStore);
     saveStore(newStore);
-  }, [greyDays, viewMode, darkMode, dateFormat, store, setStore]);
+  }, [greyDays, darkMode, dateFormat, store, setStore]);
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
@@ -62,13 +60,6 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
       <div className="mb-3">
         <label>Grey threshold (days)</label>
         <input type="number" className="form-control" value={greyDays} onChange={e => setGreyDays(+e.target.value)} />
-      </div>
-      <div className="mb-3">
-        <label>View mode</label>
-        <select className="form-select" value={viewMode} onChange={e => setViewMode(e.target.value as any)}>
-          <option value="calendar">Calendar</option>
-          <option value="list">List</option>
-        </select>
       </div>
       <div className="form-check form-switch mb-3">
         <input className="form-check-input" type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />

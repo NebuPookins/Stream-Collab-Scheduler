@@ -260,9 +260,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         </div>
       </div>
 
-      {doneState ? (
+      {doneState && doneState.date ? (
         <div>
-          <h3>Streamed with ({formatDate(doneState.date, store.settings.dateFormat)})</h3>
+          <h3>Streamed with ({formatDate(new Date(doneState.date), store.settings.dateFormat)})</h3>
           <ul className="list-group mb-3">
             {asks.filter(a => a.confirmed).map(a => {
               const partner = store.partners.find(p => p.id === a.partnerId);

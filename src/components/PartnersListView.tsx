@@ -2,9 +2,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Partner, Store } from '../types';
+import { Partner, Store } from '../types'; // Removed Game and AskRecord, Store now provides games
 import { formatDate } from '../helpers/dateFormatter';
-import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters'; // Added calculateLastStreamed
+import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters';
+import { calculatePendingEvents, PendingEvent } from '../helpers/eventCalculators'; // Added
 
 interface PartnersListProps {
   store: Store;
@@ -47,37 +48,51 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
             <th scope="col">Name</th>
             <th scope="col">Busy Until</th>
             <th scope="col">Last Streamed</th>
+            <th scope="col">Pending Events</th>
           </tr>
         </thead>
         <tbody>
-        {sortedPartners.map(p => (
-          <tr key={p.id}>
-            <th scope="row">
-              <Link to={`/partners/${p.id}`}>{p.name}</Link>
-            </th>
-            <td>
-              {
-              (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
-                <span>
-                  {formatDate(p.busyUntil, store.settings.dateFormat)}
-                </span>
-              ):(
-                <span>
-                  Available
-                </span>
-              )
-              }
-            </td>
-            <td>
-              {
-                (() => {
-                  const lastStreamedDate = calculateLastStreamed(p, store.games);
-                  return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
-                })()
-              }
-            </td>
-          </tr>
-        ))}
+        {sortedPartners.map(p => {
+          const pendingEvents = calculatePendingEvents(p, store.games);
+
+          return (
+            <tr key={p.id}>
+              <th scope="row">
+                <Link to={`/partners/${p.id}`}>{p.name}</Link>
+              </th>
+              <td>
+                {
+                (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
+                  <span>
+                    {formatDate(p.busyUntil, store.settings.dateFormat)}
+                  </span>
+                ):(
+                  <span>
+                    Available
+                  </span>
+                )
+                }
+              </td>
+              <td>
+                {
+                  (() => {
+                    const lastStreamedDate = calculateLastStreamed(p, store.games);
+                    return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
+                  })()
+                }
+              </td>
+              <td>
+                {pendingEvents.length > 0 ? (
+                  pendingEvents.map((event: PendingEvent, index) => (
+                    <div key={index}>{`${event.gameName} (${event.status})`}</div>
+                  ))
+                ) : (
+                  "None"
+                )}
+              </td>
+            </tr>
+          );
+        })}
         </tbody>
       </table>
     </div>

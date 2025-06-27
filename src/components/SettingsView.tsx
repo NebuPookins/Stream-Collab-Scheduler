@@ -42,7 +42,7 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'backup.json';
+    a.download = `stream-collab-scheduler.backup.${new Date().toISOString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -84,8 +84,9 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
           <option value="Month Day, Year">Month Day, Year</option>
         </select>
       </div>
-      <button className="btn btn-secondary me-2" onClick={exportJSON}>Export JSON</button>
-      <input type="file" accept="application/json" onChange={importJSON} />
+       <button className="btn btn-secondary me-2" onClick={exportJSON}>Download backup</button>
+       <input type="file" accept="application/json" onChange={importJSON} style={{ display: 'none' }} id="import-file-input" />
+       <button className="btn btn-primary" onClick={() => document.getElementById('import-file-input')?.click()}>Restore from backup</button>
     </div>
   );
 };

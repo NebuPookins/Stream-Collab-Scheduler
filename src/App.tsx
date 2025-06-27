@@ -16,13 +16,21 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (store) saveStore(store);
+    if (store) {
+      saveStore(store);
+      // Update data-bs-theme attribute on html element
+      if (store.settings.darkMode) {
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-bs-theme', 'light');
+      }
+    }
   }, [store]);
 
   if (!store) return <div>Loading...</div>;
 
   return (
-    <div className={store.settings.darkMode ? 'bg-dark text-light' : ''}>
+    <div>
       <nav className="navbar navbar-expand-lg">
         <ul className="navbar-nav me-auto mb-2 mb-lg-0">
           <li className="nav-item"><NavLink className="nav-link" to="/games">Games</NavLink></li>

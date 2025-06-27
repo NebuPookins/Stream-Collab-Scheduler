@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.4.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <title>Stream Collab Scheduler</title>
+  <script>
+    // Apply theme from localStorage before content renders
+    try {
+      const store = JSON.parse(localStorage.getItem('streamCollabStore'));
+      if (store && store.settings && store.settings.darkMode) {
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-bs-theme', 'light');
+      }
+    } catch (e) {
+      // If localStorage is invalid or missing, default to light mode
+      document.documentElement.setAttribute('data-bs-theme', 'light');
+      console.warn("Could not load theme from localStorage", e);
+    }
+  </script>
 </head>
 <body>
   <div id="root"></div>

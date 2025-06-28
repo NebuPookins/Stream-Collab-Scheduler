@@ -5,6 +5,7 @@ import { Game, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
+import { sortUnmetGames } from '../helpers/gameSorters';
 
 interface GamesListProps {
   store: Store;
@@ -29,6 +30,8 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
     const t2 = b.deadline?.getTime() ?? Infinity;
     return t1 - t2;
   };
+
+  const sortedUnmetGames = sortUnmetGames(unmet);
 
   const addGame = () => {
     const newGame: Game = {
@@ -65,7 +68,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
           </tr>
         </thead>
         <tbody>
-          {unmet.sort(sortByDeadline).map(g => (
+          {sortedUnmetGames.map(g => (
             <tr key={g.id}>
               <th scope="row">
                 <Link to={`/games/${g.id}`}>

@@ -1,5 +1,5 @@
-import { Game, AskRecord } from '../types';
-import { sortUnmetGames } from './gameSorters';
+import { Game, AskRecord } from '../src/types';
+import { sortUnmetGames } from '../src/helpers/gameSorters';
 
 const createMockAskRecord = (): AskRecord => ({
   partnerId: '', // Using empty string for simplicity, adjust if needed

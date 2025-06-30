@@ -27,3 +27,43 @@ export function getSteamCoverUrl(steamAppId: string | undefined): string | undef
   }
   return `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${steamAppId}/header.jpg`;
 }
+
+import { Partner, Game, AskRecord } from '../types'; // Added import
+
+/**
+ * Filters games to find open asks for a specific partner.
+ * @param partner The partner for whom to find open asks.
+ * @param games An array of all games.
+ * @returns An array of games that are open asks for the partner.
+ */
+export function getOpenAsksForPartner(partner: Partner, games: Game[]): Game[] {
+  const openAsks: Game[] = [];
+  const now = new Date();
+
+  for (const game of games) {
+    // Check if the game deadline is in the past
+    if (game.deadline && new Date(game.deadline) < now) {
+      continue;
+    }
+
+    // Check if the game has met its desired partner amount
+    const confirmedPartnersCount = game.asks.filter(ask => ask.confirmed).length;
+    if (confirmedPartnersCount >= game.desiredPartners) {
+      continue;
+    }
+
+    // Find asks for the current partner
+    const partnerAsk = game.asks.find(
+      (ask: AskRecord) =>
+        ask.partnerId === partner.id &&
+        !ask.confirmed &&
+        (ask.response === undefined || ask.response === '')
+    );
+
+    if (partnerAsk) {
+      openAsks.push(game);
+    }
+  }
+
+  return openAsks;
+}

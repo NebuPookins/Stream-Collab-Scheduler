@@ -2,9 +2,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Partner, Store } from '../types';
+import { Partner, Store, Game } from '../types'; // Added Game
 import { formatDate } from '../helpers/dateFormatter';
 import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters'; // Added calculateLastStreamed
+import { getOpenAsksForPartner } from '../helpers/storeUtils'; // Added import
 
 interface PartnersListProps {
   store: Store;
@@ -47,37 +48,53 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
             <th scope="col">Name</th>
             <th scope="col">Busy Until</th>
             <th scope="col">Last Streamed</th>
+            <th scope="col">Open Asks</th> {/* Added Open Asks header */}
           </tr>
         </thead>
         <tbody>
-        {sortedPartners.map(p => (
-          <tr key={p.id}>
-            <th scope="row">
-              <Link to={`/partners/${p.id}`}>{p.name}</Link>
-            </th>
-            <td>
-              {
-              (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
-                <span>
-                  {formatDate(p.busyUntil, store.settings.dateFormat)}
-                </span>
-              ):(
-                <span>
-                  Available
-                </span>
-              )
-              }
-            </td>
-            <td>
-              {
-                (() => {
-                  const lastStreamedDate = calculateLastStreamed(p, store.games);
-                  return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
-                })()
-              }
-            </td>
-          </tr>
-        ))}
+        {sortedPartners.map(p => {
+          const openAsks = getOpenAsksForPartner(p, store.games); // Get open asks
+          return (
+            <tr key={p.id}>
+              <th scope="row">
+                <Link to={`/partners/${p.id}`}>{p.name}</Link>
+              </th>
+              <td>
+                {
+                (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
+                  <span>
+                    {formatDate(p.busyUntil, store.settings.dateFormat)}
+                  </span>
+                ):(
+                  <span>
+                    Available
+                  </span>
+                )
+                }
+              </td>
+              <td>
+                {
+                  (() => {
+                    const lastStreamedDate = calculateLastStreamed(p, store.games);
+                    return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
+                  })()
+                }
+              </td>
+              <td> {/* Added Open Asks column data */}
+                {openAsks.length > 0 ? (
+                  openAsks.map((game: Game, index: number) => (
+                    <React.Fragment key={game.id}>
+                      <Link to={`/games/${game.id}`}>{game.name}</Link>
+                      {index < openAsks.length - 1 && ', '}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <span>-</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
         </tbody>
       </table>
     </div>

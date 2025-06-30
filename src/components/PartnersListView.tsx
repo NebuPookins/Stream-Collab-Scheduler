@@ -2,10 +2,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Partner, Store, Game } from '../types'; // Added Game
+import { Partner, Store, Game } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
-import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters'; // Added calculateLastStreamed
-import { getOpenAsksForPartner } from '../helpers/storeUtils'; // Added import
+import { sortPartners, calculateLastStreamed } from '../helpers/partnerSorters';
+import { getPartnerGameStates } from '../helpers/storeUtils'; // Updated import
 
 interface PartnersListProps {
   store: Store;
@@ -48,12 +48,13 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
             <th scope="col">Name</th>
             <th scope="col">Busy Until</th>
             <th scope="col">Last Streamed</th>
-            <th scope="col">Open Asks</th> {/* Added Open Asks header */}
+            <th scope="col">Planned Streaming</th> {/* New column */}
+            <th scope="col">Open Asks</th>
           </tr>
         </thead>
         <tbody>
         {sortedPartners.map(p => {
-          const openAsks = getOpenAsksForPartner(p, store.games); // Get open asks
+          const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games);
           return (
             <tr key={p.id}>
               <th scope="row">
@@ -80,12 +81,24 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
                   })()
                 }
               </td>
-              <td> {/* Added Open Asks column data */}
-                {openAsks.length > 0 ? (
-                  openAsks.map((game: Game, index: number) => (
+              <td> {/* Planned Streaming column data */}
+                {plannedStreams.length > 0 ? (
+                  plannedStreams.map((game: Game, index: number) => (
                     <React.Fragment key={game.id}>
                       <Link to={`/games/${game.id}`}>{game.name}</Link>
-                      {index < openAsks.length - 1 && ', '}
+                      {index < plannedStreams.length - 1 && ', '}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <span>-</span>
+                )}
+              </td>
+              <td> {/* Open Asks column data - now uses pendingAsks */}
+                {pendingAsks.length > 0 ? (
+                  pendingAsks.map((game: Game, index: number) => (
+                    <React.Fragment key={game.id}>
+                      <Link to={`/games/${game.id}`}>{game.name}</Link>
+                      {index < pendingAsks.length - 1 && ', '}
                     </React.Fragment>
                   ))
                 ) : (

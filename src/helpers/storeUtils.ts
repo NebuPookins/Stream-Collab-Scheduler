@@ -30,40 +30,44 @@ export function getSteamCoverUrl(steamAppId: string | undefined): string | undef
 
 import { Partner, Game, AskRecord } from '../types'; // Added import
 
-/**
- * Filters games to find open asks for a specific partner.
- * @param partner The partner for whom to find open asks.
- * @param games An array of all games.
- * @returns An array of games that are open asks for the partner.
- */
-export function getOpenAsksForPartner(partner: Partner, games: Game[]): Game[] {
-  const openAsks: Game[] = [];
+export interface PartnerGameStates {
+  plannedStreams: Game[];
+  pendingAsks: Game[];
+}
+
+export function getPartnerGameStates(
+  partner: Partner,
+  allGames: Game[],
+  excludeGameId?: string
+): PartnerGameStates {
+  const plannedStreams: Game[] = [];
+  const pendingAsks: Game[] = [];
   const now = new Date();
 
-  for (const game of games) {
-    // Check if the game deadline is in the past
-    if (game.deadline && new Date(game.deadline) < now) {
+  for (const game of allGames) {
+    if (game.id === excludeGameId) {
       continue;
     }
 
-    // Check if the game has met its desired partner amount
-    const confirmedPartnersCount = game.asks.filter(ask => ask.confirmed).length;
-    if (confirmedPartnersCount >= game.desiredPartners) {
+    if (game.done) {
       continue;
     }
 
-    // Find asks for the current partner
-    const partnerAsk = game.asks.find(
-      (ask: AskRecord) =>
-        ask.partnerId === partner.id &&
-        !ask.confirmed &&
-        (ask.response === undefined || ask.response === '')
-    );
+    const partnerAsk = game.asks.find(ask => ask.partnerId === partner.id);
 
     if (partnerAsk) {
-      openAsks.push(game);
+      if (partnerAsk.confirmed) {
+        plannedStreams.push(game);
+      } else {
+        // Conditions for pendingAsks
+        const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed).length;
+        const deadlinePassed = game.deadline && new Date(game.deadline) < now;
+
+        if (!gameHasAllNeededConfirmations && !deadlinePassed && (!partnerAsk.response || partnerAsk.response.trim() === '')) {
+          pendingAsks.push(game);
+        }
+      }
     }
   }
-
-  return openAsks;
+  return { plannedStreams, pendingAsks };
 }

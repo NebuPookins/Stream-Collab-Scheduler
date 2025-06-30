@@ -8,7 +8,7 @@ import { saveStore } from '../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
-import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
+import { getSteamAppIdFromUrl, getSteamCoverUrl, getPartnerGameStates } from '../helpers/storeUtils'; // Added getPartnerGameStates
 import { marked } from 'marked';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
@@ -398,48 +398,28 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 </div>
                 <div>
                 {(() => {
-                  const today = new Date();
-                    const openAsksForPartner = store.games.reduce((acc: {confirmed: {id: string, name: string}[], unconfirmed: {id: string, name: string}[]}, currentGame) => {
-                    if (currentGame.id === game.id || currentGame.done) { // Exclude current game and done games
-                      return acc;
-                    }
-                    if (currentGame.deadline && new Date(currentGame.deadline) <= today) {
-                      return acc;
-                    }
-                    const gameHasAllNeededConfirmations = currentGame.desiredPartners <= currentGame.asks.filter(a => a.confirmed).length;
+                  const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games, game.id);
 
-                    currentGame.asks.filter(ask =>
-                      ask.partnerId === p?.id
-                    ).forEach(ask => {
-                      if (ask.confirmed) {
-                          acc.confirmed.push({ id: currentGame.id, name: currentGame.name });
-                      } else if ((!gameHasAllNeededConfirmations) && ((!ask.response) || ask.response.trim() == "")) {
-                          acc.unconfirmed.push({ id: currentGame.id, name: currentGame.name });
-                      }
-                    });
-                    return acc;
-                  }, {confirmed: [], unconfirmed: []});
+                  const formatGameLinks = (games: { id: string, name: string }[]) => {
+                    return games.map((g, index) => (
+                      <React.Fragment key={g.id}>
+                        <Link to={`/games/${g.id}`}>{g.name}</Link>
+                        {index < games.length - 1 ? ', ' : ''}
+                      </React.Fragment>
+                    ));
+                  };
 
-                    const formatGameLinks = (games: {id: string, name: string}[]) => {
-                      return games.map((g, index) => (
-                        <React.Fragment key={g.id}>
-                          <Link to={`/games/${g.id}`}>{g.name}</Link>
-                          {index < games.length - 1 ? ', ' : ''}
-                        </React.Fragment>
-                      ));
-                    };
-
-                  if (openAsksForPartner.confirmed.length > 0 || openAsksForPartner.unconfirmed.length > 0) {
-                      const confirmedLinks = openAsksForPartner.confirmed.length > 0 ?
-                        <>streaming [{formatGameLinks(openAsksForPartner.confirmed)}]</> : null;
-                      const unconfirmedLinks = openAsksForPartner.unconfirmed.length > 0 ?
-                        <>waiting for response for [{formatGameLinks(openAsksForPartner.unconfirmed)}]</> : null;
+                  if (plannedStreams.length > 0 || pendingAsks.length > 0) {
+                    const confirmedLinks = plannedStreams.length > 0 ?
+                      <>streaming [{formatGameLinks(plannedStreams.map(g => ({ id: g.id, name: g.name })))}]</> : null;
+                    const unconfirmedLinks = pendingAsks.length > 0 ?
+                      <>waiting for response for [{formatGameLinks(pendingAsks.map(g => ({ id: g.id, name: g.name })))}]</> : null;
 
                     return (
                       <small className="ms-2 text-muted d-block">
-                          (Already {confirmedLinks}
-                          {confirmedLinks && unconfirmedLinks ? ", " : ""}
-                          {unconfirmedLinks})
+                        (Already {confirmedLinks}
+                        {confirmedLinks && unconfirmedLinks ? ", " : ""}
+                        {unconfirmedLinks})
                       </small>
                     );
                   }

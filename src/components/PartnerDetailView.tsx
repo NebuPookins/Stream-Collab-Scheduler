@@ -134,7 +134,14 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     return store.games
       .filter(game => {
         const confirmedAsks = game.asks.filter(a => a.confirmed).length;
-        return game.desiredPartners > confirmedAsks;
+        if (game.desiredPartners <= confirmedAsks) {
+          return false;
+        }
+        // Don't include a game if we already have an AskRecord with the current partner for that game.
+        if (game.asks.some(ask => ask.partnerId === id)) {
+          return false;
+        }
+        return true;
       })
       .map(game => {
         const score = calculateGameScoreForPartner(game.tags, partner.lovesTags, partner.hatesTags);

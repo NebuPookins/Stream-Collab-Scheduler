@@ -1,5 +1,5 @@
 // src/components/PartnersListView.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { Partner, Store, Game } from '../types';
@@ -14,10 +14,15 @@ interface PartnersListProps {
 
 const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
+  const [filterText, setFilterText] = useState('');
 
   // Sort partners using the new helper function.
   // No game-specific tags here, so gameTags argument is undefined.
   const sortedPartners = sortPartners(store.partners, store.games); // Pass store.games
+
+  const filteredPartners = sortedPartners.filter(partner =>
+    partner.name.toLowerCase().includes(filterText.toLowerCase())
+  );
 
   const addPartner = () => {
     const newPartner: Partner = {
@@ -42,6 +47,16 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
         <button className="btn btn-sm btn-primary" onClick={addPartner}>+ Add Partner</button>
       </div>
 
+      <div className="mb-3">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Filter partners..."
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
+        />
+      </div>
+
       <table className="table table-striped table-hover mb-4">
         <thead>
           <tr>
@@ -53,61 +68,69 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
           </tr>
         </thead>
         <tbody>
-        {sortedPartners.map(p => {
-          const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games);
-          return (
-            <tr key={p.id}>
-              <th scope="row">
-                <Link to={`/partners/${p.id}`}>{p.name}</Link>
-              </th>
-              <td>
-                {
-                (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
-                  <span>
-                    {formatDate(p.busyUntil, store.settings.dateFormat)}
-                  </span>
-                ):(
-                  <span>
-                    Available
-                  </span>
-                )
-                }
-              </td>
-              <td>
-                {
-                  (() => {
-                    const lastStreamedDate = calculateLastStreamed(p, store.games);
-                    return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
-                  })()
-                }
-              </td>
-              <td> {/* Planned Streaming column data */}
-                {plannedStreams.length > 0 ? (
-                  plannedStreams.map((game: Game, index: number) => (
-                    <React.Fragment key={game.id}>
-                      <Link to={`/games/${game.id}`}>{game.name}</Link>
-                      {index < plannedStreams.length - 1 && ', '}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <span>-</span>
-                )}
-              </td>
-              <td> {/* Open Asks column data - now uses pendingAsks */}
-                {pendingAsks.length > 0 ? (
-                  pendingAsks.map((game: Game, index: number) => (
-                    <React.Fragment key={game.id}>
-                      <Link to={`/games/${game.id}`}>{game.name}</Link>
-                      {index < pendingAsks.length - 1 && ', '}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <span>-</span>
-                )}
+          {filteredPartners.length > 0 ? (
+            filteredPartners.map(p => {
+              const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games);
+              return (
+                <tr key={p.id}>
+                  <th scope="row">
+                    <Link to={`/partners/${p.id}`}>{p.name}</Link>
+                  </th>
+                  <td>
+                    {
+                    (p.busyUntil && new Date(p.busyUntil) > new Date()) ? (
+                      <span>
+                        {formatDate(p.busyUntil, store.settings.dateFormat)}
+                      </span>
+                    ):(
+                      <span>
+                        Available
+                      </span>
+                    )
+                    }
+                  </td>
+                  <td>
+                    {
+                      (() => {
+                        const lastStreamedDate = calculateLastStreamed(p, store.games);
+                        return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
+                      })()
+                    }
+                  </td>
+                  <td> {/* Planned Streaming column data */}
+                    {plannedStreams.length > 0 ? (
+                      plannedStreams.map((game: Game, index: number) => (
+                        <React.Fragment key={game.id}>
+                          <Link to={`/games/${game.id}`}>{game.name}</Link>
+                          {index < plannedStreams.length - 1 && ', '}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </td>
+                  <td> {/* Open Asks column data - now uses pendingAsks */}
+                    {pendingAsks.length > 0 ? (
+                      pendingAsks.map((game: Game, index: number) => (
+                        <React.Fragment key={game.id}>
+                          <Link to={`/games/${game.id}`}>{game.name}</Link>
+                          {index < pendingAsks.length - 1 && ', '}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={5} className="text-center">
+                No partners match your filter.
               </td>
             </tr>
-          );
-        })}
+          )}
         </tbody>
       </table>
     </div>

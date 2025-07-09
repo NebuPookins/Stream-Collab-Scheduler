@@ -83,11 +83,14 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     saveStore(newStore);
   }, [name, lastStreamedWith, busyUntil, schedule, lovesTags, hatesTags, partner, idx, store, setStore]);
 
+  // Only consider non-trashed games for events and relevantGames
+  const nonTrashedGames = store.games.filter(g => !g.trashed);
+
   const partnerEvents = React.useMemo(() => {
     const events: PartnerEvent[] = [];
 
     // Add AskRequests
-    store.games.forEach(game => {
+    nonTrashedGames.forEach(game => {
       game.asks.forEach((ask, askIdx) => {
         if (ask.partnerId === id) {
           events.push({
@@ -111,7 +114,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     }
 
     // Add Game Done events
-    store.games.forEach(game => {
+    nonTrashedGames.forEach(game => {
       if (game.done && game.asks.some(a => a.partnerId === id && a.confirmed)) {
         const otherConfirmedPartners = store.partners.filter(p =>
           p.id !== id && game.asks.some(a => a.partnerId === p.id && a.confirmed)
@@ -128,10 +131,10 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
 
     // Sort events chronologically
     return events.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [store.games, store.partners, id, partner.busyUntil]);
+  }, [nonTrashedGames, store.partners, id, partner.busyUntil]);
 
   const relevantGames = React.useMemo(() => {
-    return store.games
+    return nonTrashedGames
       .filter(game => {
         // Don't include games that are marked as done
         if (game.done) {
@@ -164,7 +167,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         if (b.deadline) return 1;  // b has deadline, a doesn't, b comes first
         return 0; // both deadlines are null
       });
-  }, [store.games, partner.lovesTags, partner.hatesTags]);
+  }, [nonTrashedGames, partner.lovesTags, partner.hatesTags, id]);
 
   const addTag = (type: 'loves' | 'hates') => {
     if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {

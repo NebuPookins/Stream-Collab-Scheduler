@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Store, DateFormatOption } from '../types';
 import { saveStore } from '../storage';
 import { deserialize } from '../helpers/serializers';
+import { Link } from 'react-router-dom';
 
 interface SettingsProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 
@@ -87,6 +88,44 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
        <button className="btn btn-secondary me-2" onClick={exportJSON}>Download backup</button>
        <input type="file" accept="application/json" onChange={importJSON} style={{ display: 'none' }} id="import-file-input" />
        <button className="btn btn-primary" onClick={() => document.getElementById('import-file-input')?.click()}>Restore from backup</button>
+
+      {/* Trashed Games Section */}
+      <div className="mt-5">
+        <h3>Trashed Games</h3>
+        {store.games.filter(g => g.trashed).length === 0 ? (
+          <p>No games in trash.</p>
+        ) : (
+          <table className="table table-bordered">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {store.games.filter(g => g.trashed).map(g => (
+                <tr key={g.id}>
+                  <td><Link to={`/games/${g.id}`}>{g.name}</Link></td>
+                  <td>
+                    <button className="btn btn-danger btn-sm me-2" onClick={() => {
+                      setStore({
+                        ...store,
+                        games: store.games.filter(game => game.id !== g.id)
+                      });
+                    }}>Permanently Delete</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                      setStore({
+                        ...store,
+                        games: store.games.map(game => game.id === g.id ? { ...game, trashed: false } : game)
+                      });
+                    }}>Restore</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 };

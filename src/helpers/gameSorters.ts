@@ -1,8 +1,9 @@
 import { Game } from '../types';
 
 export const sortUnmetGames = (games: Game[]): Game[] => {
-  const gamesWithDeadline = games.filter(g => g.deadline);
-  const gamesWithoutDeadline = games.filter(g => !g.deadline);
+  const filtered = games.filter(g => !g.trashed);
+  const gamesWithDeadline = filtered.filter(g => g.deadline);
+  const gamesWithoutDeadline = filtered.filter(g => !g.deadline);
 
   gamesWithDeadline.sort((a, b) => {
     const t1 = a.deadline?.getTime() ?? Infinity;

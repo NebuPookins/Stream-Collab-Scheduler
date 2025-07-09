@@ -45,6 +45,9 @@ export function getPartnerGameStates(
   const now = new Date();
 
   for (const game of allGames) {
+    if (game.trashed) {
+      continue;
+    }
     if (game.id === excludeGameId) {
       continue;
     }

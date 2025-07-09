@@ -15,9 +15,9 @@ interface GamesListProps {
 const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
 
-  // Filter out done games first
-  const notDoneGames = store.games.filter(g => !g.done);
-  const doneGames = store.games.filter(g => g.done);
+  // Filter out trashed and done games first
+  const notDoneGames = store.games.filter(g => !g.done && !g.trashed);
+  const doneGames = store.games.filter(g => g.done && !g.trashed);
 
   // Sort done games by done date, most recent first
   doneGames.sort((a, b) => (b.done?.date.getTime() ?? 0) - (a.done?.date.getTime() ?? 0));
@@ -42,7 +42,8 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       manualMetadata: {},
       desiredPartners: 1,
       asks: [],
-      tags: []
+      tags: [],
+      trashed: false // Default to not trashed
     };
     setStore({
       ...store,

@@ -17,6 +17,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const gameIndex = store.games.findIndex(g => g.id === id);
   if (gameIndex < 0) return <div>Not found</div>;
   const game = store.games[gameIndex];
+  
   const [name, setName] = useState(game.name);
   const [deadline, setDeadline] = useState<Date | undefined>(game.deadline);
   const [desiredPartners, setDesiredPartners] = useState(game.desiredPartners);
@@ -154,14 +155,38 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   return (
     <div>
+      {game.trashed && (
+        <div className="alert alert-warning mb-4">
+          <h4>This game is in the Trash</h4>
+          <p>You can restore it using the button below, or permanently delete it from Settings.</p>
+          <button className="btn btn-success" onClick={() => {
+            setStore({
+              ...store,
+              games: store.games.map(g => g.id === game.id ? { ...g, trashed: false } : g)
+            });
+          }}>Restore from Trash</button>
+        </div>
+      )}
+      
       <img src={imageUrlForDisplay} alt="Game Cover" className="img-fluid mb-3" style={{ maxHeight: '200px' }}/>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
-        {doneState ? (
-          <button className="btn btn-warning" onClick={handleUnmarkAsDone}>Unmark Done</button>
-        ) : (
-          <button className="btn btn-success" onClick={handleMarkAsDone}>Mark as Done</button>
-        )}
+        <div>
+          {doneState ? (
+            <button className="btn btn-warning me-2" onClick={handleUnmarkAsDone}>Unmark Done</button>
+          ) : (
+            <button className="btn btn-success me-2" onClick={handleMarkAsDone}>Mark as Done</button>
+          )}
+          {!game.trashed && (
+            <button className="btn btn-outline-danger" onClick={() => {
+              setStore({
+                ...store,
+                games: store.games.map(g => g.id === game.id ? { ...g, trashed: true } : g)
+              });
+              navigate('/games');
+            }}>Move to Trash</button>
+          )}
+        </div>
       </div>
       <div className="row mb-3">
         <input className="form-control form-control-lg" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />

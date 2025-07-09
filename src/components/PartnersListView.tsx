@@ -16,9 +16,11 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
   const [filterText, setFilterText] = useState('');
 
+  // Only pass non-trashed games to getPartnerGameStates
+  const filteredGames = store.games.filter(g => !g.trashed);
   // Sort partners using the new helper function.
   // No game-specific tags here, so gameTags argument is undefined.
-  const sortedPartners = sortPartners(store.partners, store.games); // Pass store.games
+  const sortedPartners = sortPartners(store.partners, filteredGames); // Pass store.games
 
   const filteredPartners = sortedPartners.filter(partner =>
     partner.name.toLowerCase().includes(filterText.toLowerCase())
@@ -63,14 +65,14 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
             <th scope="col">Name</th>
             <th scope="col">Busy Until</th>
             <th scope="col">Last Streamed</th>
-            <th scope="col">Planned Streaming</th> {/* New column */}
+            <th scope="col">Planned Streaming</th>
             <th scope="col">Open Asks</th>
           </tr>
         </thead>
         <tbody>
           {filteredPartners.length > 0 ? (
             filteredPartners.map(p => {
-              const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games);
+              const { plannedStreams, pendingAsks } = getPartnerGameStates(p, filteredGames);
               return (
                 <tr key={p.id}>
                   <th scope="row">
@@ -90,12 +92,10 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
                     }
                   </td>
                   <td>
-                    {
-                      (() => {
-                        const lastStreamedDate = calculateLastStreamed(p, store.games);
-                        return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
-                      })()
-                    }
+                    {(() => {
+                      const lastStreamedDate = calculateLastStreamed(p, filteredGames);
+                      return lastStreamedDate ? formatDate(lastStreamedDate, store.settings.dateFormat) : 'Never';
+                    })()}
                   </td>
                   <td> {/* Planned Streaming column data */}
                     {plannedStreams.length > 0 ? (
@@ -138,3 +138,4 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
 };
 
 export default PartnersListView;
+

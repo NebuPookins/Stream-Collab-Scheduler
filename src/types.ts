@@ -19,6 +19,7 @@ export interface Game {
     date: Date;
     streamingNotes: string;
   };
+  trashed?: boolean;
 }
 
 export interface Partner {

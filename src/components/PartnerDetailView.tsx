@@ -133,6 +133,10 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const relevantGames = React.useMemo(() => {
     return store.games
       .filter(game => {
+        // Don't include games that are marked as done
+        if (game.done) {
+          return false;
+        }
         const confirmedAsks = game.asks.filter(a => a.confirmed).length;
         if (game.desiredPartners <= confirmedAsks) {
           return false;

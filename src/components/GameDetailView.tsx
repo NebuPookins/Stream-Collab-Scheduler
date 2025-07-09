@@ -28,6 +28,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [newTagInput, setNewTagInput] = useState('');
   const [notes, setNotes] = useState(game.notes || '');
   const [doneState, setDoneState] = useState(game.done);
+  const [scheduledTimes, setScheduledTimes] = useState<Date[]>(game.scheduledTimes || []);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -54,8 +55,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setTags(game.tags || []);
     setNotes(game.notes || '');
     setDoneState(game.done);
+    setScheduledTimes(game.scheduledTimes || []);
   }, [game]);
-
 
   // useEffect for saving
   useEffect(() => {
@@ -65,7 +66,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       if (name === game.name && deadline === game.deadline && desiredPartners === game.desiredPartners &&
           storeUrlInput === (game.storeUrl || '') && coverUrl === game.manualMetadata?.coverUrl &&
           JSON.stringify(asks) === JSON.stringify(game.asks) && JSON.stringify(tags) === JSON.stringify(game.tags || []) &&
-          notes === (game.notes || '') && JSON.stringify(doneState) === JSON.stringify(game.done)) {
+          notes === (game.notes || '') && JSON.stringify(doneState) === JSON.stringify(game.done) &&
+          JSON.stringify(scheduledTimes) === JSON.stringify(game.scheduledTimes || [])) {
         initialLoadComplete.current = true;
       }
       return; // Don't save on initial load or during the state sync from game prop
@@ -84,6 +86,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       tags,
       notes,
       done: doneState,
+      scheduledTimes,
     };
 
     const newGames = [...store.games];
@@ -91,7 +94,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const newStore = { ...store, games: newGames };
     setStore(newStore); // Update local React state first
     saveStore(newStore); // Then persist to storage
-  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, notes, doneState, game, gameIndex, store, setStore]);
+  }, [name, deadline, desiredPartners, storeUrlInput, coverUrl, asks, tags, notes, doneState, scheduledTimes, game, gameIndex, store, setStore]);
 
 
   const askedIds = asks.map(a => a.partnerId);
@@ -149,6 +152,25 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   const handleUnmarkAsDone = () => {
     setDoneState(undefined);
+  };
+
+  const addScheduledTime = () => {
+    setScheduledTimes([...scheduledTimes, new Date()]);
+  };
+
+  const removeScheduledTime = (index: number) => {
+    setScheduledTimes(scheduledTimes.filter((_, i) => i !== index));
+  };
+
+  const updateScheduledTime = (index: number, newDate: Date) => {
+    const updatedTimes = [...scheduledTimes];
+    updatedTimes[index] = newDate;
+    setScheduledTimes(updatedTimes);
+  };
+
+  const getDiscordTimestamp = (date: Date) => {
+    const unixTimestamp = Math.floor(date.getTime() / 1000);
+    return `<t:${unixTimestamp}:F>`;
   };
 
   const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
@@ -262,6 +284,51 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             </datalist>
             <button className="btn btn-outline-secondary" type="button" onClick={addTag}>Add</button>
           </div>
+        </div>
+      </div>
+
+      <div className="row mb-3">
+        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Scheduled Times</label>
+        <div className={`col-sm-${fieldBootstrapColumns}`}>
+          <div className="mb-2">
+            <button className="btn btn-outline-primary btn-sm" onClick={addScheduledTime}>+ Add Scheduled Time</button>
+          </div>
+          {scheduledTimes.length === 0 ? (
+            <p className="text-muted">No scheduled times added yet.</p>
+          ) : (
+            <div>
+              {scheduledTimes.map((time, index) => (
+                <div key={index} className="d-flex align-items-center mb-2">
+                  <button 
+                    className="btn btn-outline-danger btn-sm" 
+                    onClick={() => removeScheduledTime(index)}
+                    title="Remove scheduled time"
+                  >
+                    ×
+                  </button>
+                  &nbsp;
+                  <div style={{ width: 'auto' }}>
+                    <DatePicker
+                      selected={time}
+                      onChange={(date) => updateScheduledTime(index, date || new Date())}
+                      showTimeSelect
+                      timeFormat="HH:mm"
+                      timeIntervals={1}
+                      dateFormat="MMMM d, yyyy h:mm aa"
+                      className="form-control me-2"
+                    />
+                  </div>
+                  &nbsp;
+                  <code className="me-2" style={{ fontSize: '0.9em' }}>
+                    {getDiscordTimestamp(time)}
+                  </code>
+                  {deadline && time > deadline && (
+                    <span title="Scheduled time is after deadline" style={{ fontSize: '1.2em' }}>⚠️</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

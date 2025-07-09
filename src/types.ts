@@ -20,6 +20,7 @@ export interface Game {
     streamingNotes: string;
   };
   trashed?: boolean;
+  scheduledTimes?: Date[];
 }
 
 export interface Partner {

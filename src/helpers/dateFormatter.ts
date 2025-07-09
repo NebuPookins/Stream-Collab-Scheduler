@@ -1,4 +1,5 @@
 import { DateFormatOption } from '../types';
+import { formatDistanceToNow } from 'date-fns';
 
 export function formatDate(date: Date, format: DateFormatOption): string {
   const year = date.getFullYear();
@@ -34,5 +35,16 @@ export function getDatePickerFormat(format: DateFormatOption): string {
       return "MMMM d, yyyy";
     default:
       return "yyyy-MM-dd"; // Default fallback
+  }
+}
+
+export function formatScheduledTimes(scheduledTimes: Date[] | undefined, dateFormat: DateFormatOption): string {
+  if (!scheduledTimes || scheduledTimes.length === 0) {
+    return '';
+  } else if (scheduledTimes.length === 1) {
+    return `${formatDate(scheduledTimes[0], dateFormat)} (${formatDistanceToNow(scheduledTimes[0], { addSuffix: true })})`;
+  } else {
+    const maxDate = new Date(Math.max(...scheduledTimes.map(d => d.getTime())));
+    return `${scheduledTimes.length} scheduled times, latest: ${formatDate(maxDate, dateFormat)} (${formatDistanceToNow(maxDate, { addSuffix: true })})`;
   }
 }

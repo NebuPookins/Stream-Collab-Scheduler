@@ -4,8 +4,9 @@ import DatePicker from 'react-datepicker';
 import { saveStore } from '../storage';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, DateFormatOption, Game, Partner } from '../types';
-import { getDatePickerFormat, formatDate } from '../helpers/dateFormatter';
+import { getDatePickerFormat, formatDate, formatScheduledTimes } from '../helpers/dateFormatter';
 import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
+import { formatDistanceToNow } from 'date-fns';
 
 // Define interfaces for the combined event types
 interface EventBase {
@@ -343,7 +344,12 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
                 </span>
               </div>
               <small className="text-muted">
-                {game.deadline ? `Deadline: ${new Date(game.deadline).toLocaleDateString()}` : 'No deadline'}
+                {game.deadline ? `Deadline: ${formatDate(new Date(game.deadline), store.settings.dateFormat)} (${formatDistanceToNow(new Date(game.deadline), { addSuffix: true })})` : 'No deadline'}
+                {formatScheduledTimes(game.scheduledTimes, store.settings.dateFormat) && (
+                  <span className="ms-2">
+                    {game.deadline ? ' • ' : ''}Scheduled: {formatScheduledTimes(game.scheduledTimes, store.settings.dateFormat)}
+                  </span>
+                )}
               </small>
             </li>
           ))}

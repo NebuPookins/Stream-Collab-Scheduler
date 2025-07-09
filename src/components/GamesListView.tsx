@@ -5,7 +5,7 @@ import { Game, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
-import { sortUnmetGames } from '../helpers/gameSorters';
+import { formatScheduledTimes } from '../helpers/dateFormatter';
 
 interface GamesListProps {
   store: Store;
@@ -25,10 +25,41 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   // Split and sort not-done games
   const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
   const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
-  const sortByDeadline = (a: Game, b: Game) => {
-    const t1 = a.deadline?.getTime() ?? Infinity;
-    const t2 = b.deadline?.getTime() ?? Infinity;
-    return t1 - t2;
+  
+  // Helper function to get the effective deadline (minimum of deadline and max scheduled date)
+  const getEffectiveDeadline = (game: Game): Date | undefined => {
+    const deadline = game.deadline;
+    const scheduledTimes = game.scheduledTimes || [];
+    
+    if (scheduledTimes.length === 0) {
+      return deadline;
+    }
+    
+    const maxScheduledDate = new Date(Math.max(...scheduledTimes.map(d => d.getTime())));
+    
+    if (!deadline) {
+      return maxScheduledDate;
+    }
+    
+    return deadline < maxScheduledDate ? deadline : maxScheduledDate;
+  };
+  
+  // Sort unmet games by effective deadline, with fallback to ask count
+  const sortUnmetGames = (games: Game[]): Game[] => {
+    const filtered = games.filter(g => !g.trashed);
+    
+    const gamesWithEffectiveDeadline = filtered.filter(g => getEffectiveDeadline(g));
+    const gamesWithoutEffectiveDeadline = filtered.filter(g => !getEffectiveDeadline(g));
+
+    gamesWithEffectiveDeadline.sort((a, b) => {
+      const t1 = getEffectiveDeadline(a)?.getTime() ?? Infinity;
+      const t2 = getEffectiveDeadline(b)?.getTime() ?? Infinity;
+      return t1 - t2;
+    });
+
+    gamesWithoutEffectiveDeadline.sort((a, b) => b.asks.length - a.asks.length);
+
+    return [...gamesWithEffectiveDeadline, ...gamesWithoutEffectiveDeadline];
   };
 
   const sortedUnmetGames = sortUnmetGames(unmet);
@@ -43,13 +74,20 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
       desiredPartners: 1,
       asks: [],
       tags: [],
-      trashed: false // Default to not trashed
+      trashed: false, // Default to not trashed
+      scheduledTimes: [] // Default to empty array
     };
     setStore({
       ...store,
       games: [...store.games, newGame]
     });
     navigate(`/games/${newGame.id}`);
+  };
+
+  const sortByEffectiveDeadline = (a: Game, b: Game) => {
+    const t1 = getEffectiveDeadline(a)?.getTime() ?? Infinity;
+    const t2 = getEffectiveDeadline(b)?.getTime() ?? Infinity;
+    return t1 - t2;
   };
 
   return (
@@ -64,6 +102,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
           <tr>
             <th scope="col">Game</th>
             <th scope="col">Deadline</th>
+            <th scope="col">Scheduled Date</th>
             <th scope="col">Confirmed</th>
             <th scope="col">Pending Asks</th>
           </tr>
@@ -95,6 +134,9 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                 {g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'}
               </td>
               <td>
+                {formatScheduledTimes(g.scheduledTimes, store.settings.dateFormat)}
+              </td>
+              <td>
                 {g.asks.filter(a => a.confirmed).length}/{g.desiredPartners}
               </td>
               <td>
@@ -120,11 +162,12 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
           <tr>
             <th scope="col">Game</th>
             <th scope="col">Deadline</th>
+            <th scope="col">Scheduled Date</th>
             <th scope="col">Partners</th>
           </tr>
         </thead>
         <tbody>
-        {met.sort(sortByDeadline).map(g => (
+        {met.sort(sortByEffectiveDeadline).map(g => (
           <tr key={g.id}>
             <th scope="row">
               <Link to={`/games/${g.id}`} style={{ verticalAlign: 'middle' }}>
@@ -147,6 +190,9 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
               </Link>
             </th>
             <td>{g.deadline ? `${formatDate(g.deadline, store.settings.dateFormat)} (${formatDistanceToNow(g.deadline, { addSuffix: true })})` : 'No deadline'}</td>
+            <td>
+              {formatScheduledTimes(g.scheduledTimes, store.settings.dateFormat)}
+            </td>
             <td>
               {g.asks
                 .filter(ask => ask.confirmed)

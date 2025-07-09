@@ -9,7 +9,7 @@ import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
 import { getSteamAppIdFromUrl, getSteamCoverUrl, getPartnerGameStates } from '../helpers/storeUtils'; // Added getPartnerGameStates
-import { marked } from 'marked';
+import MarkdownNotesField from './MarkdownNotesField';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
@@ -26,9 +26,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [tags, setTags] = useState<string[]>(game.tags || []);
   const [newTagInput, setNewTagInput] = useState('');
   const [notes, setNotes] = useState(game.notes || '');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [doneState, setDoneState] = useState(game.done);
-  const [isEditingStreamingNotes, setIsEditingStreamingNotes] = useState(false);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -204,27 +202,12 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         </div>
       </div>
 
-      <div className="row mb-3">
-        <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Notes</label>
-        <div className={`col-sm-${fieldBootstrapColumns}`}>
-          {isEditingNotes || !notes ? (
-            <textarea
-              className="form-control"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              onBlur={() => setIsEditingNotes(false)}
-              rows={5}
-              placeholder="Enter notes here..."
-            />
-          ) : (
-            <div
-              onClick={() => setIsEditingNotes(true)}
-              dangerouslySetInnerHTML={{ __html: marked(notes) }}
-              style={{ border: '1px solid #ced4da', borderRadius: '.25rem', padding: '.375rem .75rem', minHeight: 'calc(1.5em + .75rem + 2px)' }}
-            />
-          )}
-        </div>
-      </div>
+      <MarkdownNotesField
+        value={notes}
+        onChange={setNotes}
+        label="Notes"
+        placeholder="Enter notes here..."
+      />
 
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Tags</label>
@@ -270,23 +253,12 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               );
             })}
           </ul>
-          <h4>Streaming Notes</h4>
-          {isEditingStreamingNotes || !doneState.streamingNotes ? (
-            <textarea
-              className="form-control"
-              value={doneState.streamingNotes}
-              onChange={e => setDoneState({ ...doneState, streamingNotes: e.target.value })}
-              onBlur={() => setIsEditingStreamingNotes(false)}
-              rows={5}
-              placeholder="Enter stream notes here (markdown)..."
-            />
-          ) : (
-            <div
-              onClick={() => setIsEditingStreamingNotes(true)}
-              dangerouslySetInnerHTML={{ __html: marked(doneState.streamingNotes) }}
-              style={{ border: '1px solid #ced4da', borderRadius: '.25rem', padding: '.375rem .75rem', minHeight: 'calc(1.5em + .75rem + 2px)' }}
-            />
-          )}
+          <MarkdownNotesField
+            value={doneState.streamingNotes}
+            onChange={(value) => setDoneState({ ...doneState, streamingNotes: value })}
+            label="Streaming Notes"
+            placeholder="Enter stream notes here (markdown)..."
+          />
         </div>
       ) : (
         <>

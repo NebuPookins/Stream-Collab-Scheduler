@@ -12,6 +12,43 @@ import { getSteamAppIdFromUrl, getSteamCoverUrl, getPartnerGameStates } from '..
 import MarkdownNotesField from './MarkdownNotesField';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
+// AskDialog component for the Ask modal
+const AskDialog: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  React.useEffect(() => {
+    if (textareaRef.current) textareaRef.current.select();
+  }, []);
+  const handleCopyAndClose = async () => {
+    if (textareaRef.current) {
+      try {
+        await navigator.clipboard.writeText(textareaRef.current.value);
+      } catch (err) {
+        // Fallback for older browsers or when clipboard API is not available
+        textareaRef.current.select();
+        document.execCommand('copy');
+      }
+    }
+    onClose();
+  };
+  return (
+    <div
+      style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'white', borderRadius: 8, padding: 24, width: '50vw', boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h5>Request template</h5>
+        <textarea ref={textareaRef} className="form-control mb-3" rows={10} defaultValue={message} readOnly />
+        <div className="d-flex justify-content-end">
+          <button className="btn btn-primary" onClick={handleCopyAndClose}>Copy to clipboard and close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const { id } = useParams(); const navigate = useNavigate();
   const gameIndex = store.games.findIndex(g => g.id === id);
@@ -29,6 +66,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const [notes, setNotes] = useState(game.notes || '');
   const [doneState, setDoneState] = useState(game.done);
   const [scheduledTimes, setScheduledTimes] = useState<Date[]>(game.scheduledTimes || []);
+  const [askDialog, setAskDialog] = useState<{ open: boolean; partnerId?: string } | null>(null);
 
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
@@ -173,10 +211,38 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     return `<t:${unixTimestamp}:F>`;
   };
 
+  // Helper to build the ask message
+  const buildAskMessage = (partner: any) => {
+    let msg = `Hi ${partner.name}! Would you like to collab ${name} with me? ${storeUrlInput}`;
+    if (scheduledTimes.length === 1) {
+      msg += `\n\nIt would be on ${getDiscordTimestamp(scheduledTimes[0])}.`;
+    } else if (scheduledTimes.length > 1) {
+      msg += `\n\nIt would be on one of the following dates:\n`;
+      msg += scheduledTimes.map(d => `- ${getDiscordTimestamp(d)}`).join('\n');
+    }
+    const lovedTags = (tags || []).filter(tag => partner.lovesTags?.includes(tag));
+    const hatedTags = (tags || []).filter(tag => partner.hatesTags?.includes(tag));
+    if (lovedTags.length > 0) {
+      msg += `\n\nI think you might like the game because it contains: ${lovedTags.join(', ')}.`;
+    }
+    if (hatedTags.length > 0) {
+      msg += `\n\nBut fair warning, this game contains: ${hatedTags.join(', ')}.`;
+    }
+    return msg;
+  };
+
   const imageUrlForDisplay: string = coverUrl || steamCoverPlaceholder || "https://placehold.co/428x200?text=No+Game+Image";
 
   return (
     <div>
+      {/* Ask Dialog Modal */}
+      {askDialog && askDialog.open && askDialog.partnerId && (() => {
+        const partner = store.partners.find(p => p.id === askDialog.partnerId);
+        if (!partner) return null;
+        const defaultMsg = buildAskMessage(partner);
+        return <AskDialog message={defaultMsg} onClose={() => setAskDialog(null)} />;
+      })()}
+      {/* End Ask Dialog Modal */}
       {game.trashed && (
         <div className="alert alert-warning mb-4">
           <h4>This game is in the Trash</h4>
@@ -496,7 +562,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   return null;
                 })()}
                 </div>
-                <button className="btn btn-sm btn-outline-primary ms-2" onClick={()=>askPartner(p.id)}>Ask</button>
+                <button className="btn btn-sm btn-outline-primary ms-2" onClick={() => { askPartner(p.id); setAskDialog({ open: true, partnerId: p.id }); }}>Ask</button>
               </li>
               );
             })}

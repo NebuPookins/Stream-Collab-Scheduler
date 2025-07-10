@@ -15,9 +15,12 @@ interface GamesListProps {
 const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   const navigate = useNavigate();
 
-  // Filter out trashed and done games first
-  const notDoneGames = store.games.filter(g => !g.done && !g.trashed);
-  const doneGames = store.games.filter(g => g.done && !g.trashed);
+  const [filterText, setFilterText] = React.useState('');
+
+  // Filter out trashed and done games first, and by filterText
+  const filterByName = (g: Game) => g.name.toLowerCase().includes(filterText.toLowerCase());
+  const notDoneGames = store.games.filter(g => !g.done && !g.trashed && filterByName(g));
+  const doneGames = store.games.filter(g => g.done && !g.trashed && filterByName(g));
 
   // Sort done games by done date, most recent first
   doneGames.sort((a, b) => (b.done?.date.getTime() ?? 0) - (a.done?.date.getTime() ?? 0));
@@ -92,6 +95,15 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
 
   return (
     <div>
+      <div className="mb-3">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Filter games by name..."
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+        />
+      </div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2>Need more collabs partners</h2>
         <button className="btn btn-sm btn-primary" onClick={addGame}>+ Add Game</button>

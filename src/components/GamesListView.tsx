@@ -5,7 +5,7 @@ import { Game, Store, DateFormatOption } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
-import { formatScheduledTimes } from '../helpers/dateFormatter';
+import { formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
 
 interface GamesListProps {
   store: Store;
@@ -28,24 +28,6 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   // Split and sort not-done games
   const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
   const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
-  
-  // Helper function to get the effective deadline (minimum of deadline and max scheduled date)
-  const getEffectiveDeadline = (game: Game): Date | undefined => {
-    const deadline = game.deadline;
-    const scheduledTimes = game.scheduledTimes || [];
-    
-    if (scheduledTimes.length === 0) {
-      return deadline;
-    }
-    
-    const maxScheduledDate = new Date(Math.max(...scheduledTimes.map(d => d.getTime())));
-    
-    if (!deadline) {
-      return maxScheduledDate;
-    }
-    
-    return deadline < maxScheduledDate ? deadline : maxScheduledDate;
-  };
   
   // Sort unmet games by effective deadline, with fallback to ask count
   const sortUnmetGames = (games: Game[]): Game[] => {

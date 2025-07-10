@@ -48,3 +48,12 @@ export function formatScheduledTimes(scheduledTimes: Date[] | undefined, dateFor
     return `${scheduledTimes.length} scheduled times, latest: ${formatDate(maxDate, dateFormat)} (${formatDistanceToNow(maxDate, { addSuffix: true })})`;
   }
 }
+
+export function getEffectiveDeadline(game: { deadline?: Date; scheduledTimes?: Date[] }): Date | undefined {
+  const deadline = game.deadline;
+  const scheduledTimes = game.scheduledTimes || [];
+  if (scheduledTimes.length === 0) return deadline;
+  const maxScheduledDate = new Date(Math.max(...scheduledTimes.map(d => d.getTime())));
+  if (!deadline) return maxScheduledDate;
+  return deadline < maxScheduledDate ? deadline : maxScheduledDate;
+}

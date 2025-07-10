@@ -4,7 +4,7 @@ import DatePicker from 'react-datepicker';
 import { saveStore } from '../storage';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, DateFormatOption, Game, Partner } from '../types';
-import { getDatePickerFormat, formatDate, formatScheduledTimes } from '../helpers/dateFormatter';
+import { getDatePickerFormat, formatDate, formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
 import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -160,13 +160,13 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         if (a.score !== b.score) {
           return b.score - a.score;
         }
-        // Secondary sort: deadline ascending (nulls last)
-        if (a.deadline && b.deadline) {
-          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        // Secondary sort: effective deadline ascending (nulls last)
+        const t1 = getEffectiveDeadline(a)?.getTime() ?? Infinity;
+        const t2 = getEffectiveDeadline(b)?.getTime() ?? Infinity;
+        if (t1 !== t2) {
+          return t1 - t2;
         }
-        if (a.deadline) return -1; // a has deadline, b doesn't, a comes first
-        if (b.deadline) return 1;  // b has deadline, a doesn't, b comes first
-        return 0; // both deadlines are null
+        return 0;
       });
   }, [nonTrashedGames, partner.lovesTags, partner.hatesTags, id]);
 

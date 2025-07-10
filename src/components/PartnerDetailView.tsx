@@ -7,6 +7,7 @@ import { Store, AskRecord, DateFormatOption, Game, Partner } from '../types';
 import { getDatePickerFormat, formatDate, formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
 import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
 import { formatDistanceToNow } from 'date-fns';
+import { isPartnerAvailable, getScheduleDescription } from '../helpers/scheduleParser';
 
 // Define interfaces for the combined event types
 interface EventBase {
@@ -153,14 +154,31 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       })
       .map(game => {
         const score = calculateGameScoreForPartner(game.tags, partner.lovesTags, partner.hatesTags);
-        return { ...game, score };
+        
+        // Check if partner is available for any of the game's scheduled times
+        let availableForScheduledTimes = true;
+        if (game.scheduledTimes && game.scheduledTimes.length > 0) {
+          availableForScheduledTimes = game.scheduledTimes.some(scheduledTime => 
+            isPartnerAvailable(schedule, scheduledTime)
+          );
+        }
+        
+        return { 
+          ...game, 
+          score,
+          availableForScheduledTimes
+        };
       })
       .sort((a, b) => {
-        // Primary sort: score descending
+        // Primary sort: availability for scheduled times (available first)
+        if (a.availableForScheduledTimes !== b.availableForScheduledTimes) {
+          return a.availableForScheduledTimes ? -1 : 1;
+        }
+        // Secondary sort: score descending
         if (a.score !== b.score) {
           return b.score - a.score;
         }
-        // Secondary sort: effective deadline ascending (nulls last)
+        // Tertiary sort: effective deadline ascending (nulls last)
         const t1 = getEffectiveDeadline(a)?.getTime() ?? Infinity;
         const t2 = getEffectiveDeadline(b)?.getTime() ?? Infinity;
         if (t1 !== t2) {
@@ -168,7 +186,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         }
         return 0;
       });
-  }, [nonTrashedGames, partner.lovesTags, partner.hatesTags, id]);
+  }, [nonTrashedGames, partner.lovesTags, partner.hatesTags, id, schedule]);
 
   const addTag = (type: 'loves' | 'hates') => {
     if (type === 'loves' && newLovesTagInput && !lovesTags.includes(newLovesTagInput)) {
@@ -206,7 +224,27 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       </div>
       <div className="mb-3">
         <label className="form-label">Schedule</label>
-        <input className="form-control" value={schedule} onChange={e=>setSchedule(e.target.value)} />
+        <input 
+          className="form-control" 
+          value={schedule} 
+          onChange={e=>setSchedule(e.target.value)}
+          placeholder="e.g., 'not friday', 'after 9pm', 'weekends only', '9am-5pm weekdays'"
+        />
+        {schedule && (
+          <div className="form-text">
+            <strong>Schedule Description:</strong> {getScheduleDescription(schedule)}
+            <br />
+            <strong>Examples:</strong>
+            <ul className="mb-0 mt-1">
+              <li><code>not friday</code> - Not available on Fridays</li>
+              <li><code>after 9pm</code> - Only available after 9 PM</li>
+              <li><code>weekends only</code> - Only available on weekends</li>
+              <li><code>not monday,wednesday</code> - Not available on Mondays and Wednesdays</li>
+              <li><code>before 5pm and not weekend</code> - Available before 5 PM but not on weekends</li>
+              <li><code>9am-5pm weekdays</code> - Available 9 AM to 5 PM on weekdays</li>
+            </ul>
+          </div>
+        )}
       </div>
       <div className="mb-3">
         <label className="form-label">Busy Until</label>
@@ -327,7 +365,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       {relevantGames.length > 0 ? (
         <ul className="list-group">
           {relevantGames.map(game => (
-            <li key={game.id} className="list-group-item d-flex justify-content-between align-items-center">
+            <li key={game.id} className={`list-group-item d-flex justify-content-between align-items-center ${!game.availableForScheduledTimes ? 'list-group-item-warning' : ''}`}>
               <div>
                 <Link to={`/games/${game.id}`}>{game.name}</Link>
                 <span className="ms-2">
@@ -342,6 +380,11 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
                     return null;
                   })}
                 </span>
+                {!game.availableForScheduledTimes && game.scheduledTimes && game.scheduledTimes.length > 0 && (
+                  <span className="ms-2 badge bg-warning text-dark" title="Partner not available for scheduled times">
+                    ⚠️ Schedule Conflict
+                  </span>
+                )}
               </div>
               <small className="text-muted">
                 {game.deadline ? `Deadline: ${formatDate(new Date(game.deadline), store.settings.dateFormat)} (${formatDistanceToNow(new Date(game.deadline), { addSuffix: true })})` : 'No deadline'}

@@ -3,15 +3,20 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
-import { Store, AskRecord } from '../types';
+import { Store, AskRecord, Partner } from '../types';
 import { saveStore } from '../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
 import { getAllUniqueTags } from '../helpers/tagUtils';
 import { sortPartners } from '../helpers/partnerSorters';
 import { getSteamAppIdFromUrl, getSteamCoverUrl, getPartnerGameStates } from '../helpers/storeUtils'; // Added getPartnerGameStates
+import { isPartnerAvailable } from '../helpers/scheduleParser';
 import MarkdownNotesField from './MarkdownNotesField';
 
 interface GameDetailProps { store: Store; setStore: React.Dispatch<React.SetStateAction<Store | null>>; }
+
+interface PartnerWithAvailability extends Partner {
+  availableForScheduledTimes: boolean;
+}
 // AskDialog component for the Ask modal
 const AskDialog: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -141,9 +146,20 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
   const partnersForConsideration = store.partners
     .filter(p => !askedIds.includes(p.id))
-    .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline);
+    .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline)
+    .map(p => {
+      // Check if partner is available for any of the game's scheduled times
+      let availableForScheduledTimes = true;
+      if (scheduledTimes.length > 0) {
+        availableForScheduledTimes = scheduledTimes.some(scheduledTime => 
+          isPartnerAvailable(p.schedule || '', scheduledTime)
+        );
+      }
+      
+      return { ...p, availableForScheduledTimes } as PartnerWithAvailability;
+    });
 
-  const availablePartners = sortPartners(partnersForConsideration, store.games, tags);
+  const availablePartners = sortPartners(partnersForConsideration, store.games, tags) as PartnerWithAvailability[];
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
@@ -522,12 +538,17 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               ) : null;
 
               return (
-              <li key={p.id} className="list-group-item d-flex justify-content-between">
+              <li key={p.id} className={`list-group-item d-flex justify-content-between ${!p.availableForScheduledTimes ? 'list-group-item-warning' : ''}`}>
                 <div>
                   <Link to={`/partners/${p.id}`}>{p.name}</Link>
                   {p.busyUntil && new Date(p.busyUntil) > new Date() && (
                     <span className="ms-1 text-muted">
                       (busy until {formatDate(p.busyUntil, store.settings.dateFormat)})
+                    </span>
+                  )}
+                  {!p.availableForScheduledTimes && scheduledTimes.length > 0 && (
+                    <span className="ms-1 badge bg-warning text-dark" title="Partner not available for scheduled times">
+                      ⚠️ Schedule Conflict
                     </span>
                   )}
                   {tagFeedback && <span className="ms-2">{tagFeedback}</span>}

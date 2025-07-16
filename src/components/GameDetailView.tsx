@@ -564,7 +564,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                     </span>
                   )}
                   {!p.availableForScheduledTimes && scheduledTimes.length > 0 && (
-                    <span className="ms-1 badge bg-warning text-dark" title="Partner not available for scheduled times">
+                    <span
+                      className="ms-1 badge bg-warning text-dark"
+                      title={p.schedule || 'No schedule info'}
+                    >
                       ⚠️ Schedule Conflict
                     </span>
                   )}

@@ -410,8 +410,13 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   <code className="me-2" style={{ fontSize: '0.9em' }}>
                     {getDiscordTimestamp(time)}
                   </code>
-                  {deadline && time > deadline && (
-                    <span title="Scheduled time is after deadline" style={{ fontSize: '1.2em' }}>⚠️</span>
+                  {/* Show warning if scheduled time is on or after the deadline date */}
+                  {deadline && (() => {
+                    const deadlineDate = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+                    const timeDate = new Date(time.getFullYear(), time.getMonth(), time.getDate());
+                    return timeDate.getTime() >= deadlineDate.getTime();
+                  })() && (
+                    <span title="Scheduled time is on or after deadline" style={{ fontSize: '1.2em' }}>⚠️</span>
                   )}
                 </div>
               ))}

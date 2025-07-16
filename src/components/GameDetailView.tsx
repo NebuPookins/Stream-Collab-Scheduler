@@ -428,7 +428,16 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               <DatePicker
                 selected={null}
                 onChange={(date) => {
-                  if (date) setScheduledTimes([...scheduledTimes, date]);
+                  if (date) {
+                    // If the user picked a date (not a time), and the time is 00:00, set to defaultScheduledHour/minute
+                    const hour = store.settings.defaultScheduledHour ?? 18;
+                    const minute = store.settings.defaultScheduledMinute ?? 0;
+                    const d = new Date(date);
+                    if (d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0) {
+                      d.setHours(hour, minute, 0, 0);
+                    }
+                    setScheduledTimes([...scheduledTimes, d]);
+                  }
                 }}
                 showTimeSelect
                 timeFormat="HH:mm"

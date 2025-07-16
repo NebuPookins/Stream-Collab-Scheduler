@@ -38,8 +38,16 @@ export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "Mon
 
 export interface Settings {
   greyThresholdDays: number;
-  darkMode: boolean;
   dateFormat: DateFormatOption;
+  darkMode?: boolean;
+  /**
+   * Default hour (0-23) for new scheduled times (e.g., 18 for 6PM)
+   */
+  defaultScheduledHour?: number;
+  /**
+   * Default minute (0-59) for new scheduled times (e.g., 0 for on the hour)
+   */
+  defaultScheduledMinute?: number;
 }
 
 export interface Store {

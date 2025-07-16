@@ -10,6 +10,8 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   const [greyDays, setGreyDays] = useState(store.settings.greyThresholdDays);
   const [darkMode, setDarkMode] = useState(store.settings.darkMode);
   const [dateFormat, setDateFormat] = useState<DateFormatOption>(store.settings.dateFormat);
+  const [defaultScheduledHour, setDefaultScheduledHour] = useState(store.settings.defaultScheduledHour ?? 18);
+  const [defaultScheduledMinute, setDefaultScheduledMinute] = useState(store.settings.defaultScheduledMinute ?? 0);
 
   const initialLoadComplete = useRef(false);
 
@@ -19,6 +21,8 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     setGreyDays(store.settings.greyThresholdDays);
     setDarkMode(store.settings.darkMode);
     setDateFormat(store.settings.dateFormat);
+    setDefaultScheduledHour(store.settings.defaultScheduledHour ?? 18);
+    setDefaultScheduledMinute(store.settings.defaultScheduledMinute ?? 0);
   }, [store.settings]);
 
   // useEffect for saving
@@ -26,17 +30,25 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     if (!initialLoadComplete.current) {
       // Heuristic to wait for state sync from props
       if (greyDays === store.settings.greyThresholdDays &&
-          darkMode === store.settings.darkMode && dateFormat === store.settings.dateFormat) {
+          darkMode === store.settings.darkMode && dateFormat === store.settings.dateFormat &&
+          defaultScheduledHour === (store.settings.defaultScheduledHour ?? 18) &&
+          defaultScheduledMinute === (store.settings.defaultScheduledMinute ?? 0)) {
         initialLoadComplete.current = true;
       }
       return; // Don't save on initial load or during state sync
     }
 
-    const newSettings = { greyThresholdDays: greyDays, darkMode, dateFormat };
+    const newSettings = { 
+      greyThresholdDays: greyDays, 
+      darkMode, 
+      dateFormat,
+      defaultScheduledHour,
+      defaultScheduledMinute
+    };
     const newStore = { ...store, settings: newSettings };
     setStore(newStore);
     saveStore(newStore);
-  }, [greyDays, darkMode, dateFormat, store, setStore]);
+  }, [greyDays, darkMode, dateFormat, defaultScheduledHour, defaultScheduledMinute, store, setStore]);
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
@@ -84,6 +96,31 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
           <option value="DD/MM/YYYY">DD/MM/YYYY</option>
           <option value="Month Day, Year">Month Day, Year</option>
         </select>
+      </div>
+      <div className="mb-3">
+        <label>Default Time for New Scheduled Dates</label>
+        <div className="d-flex align-items-center">
+          <input
+            type="number"
+            className="form-control me-2"
+            style={{ width: '6em' }}
+            min={0}
+            max={23}
+            value={defaultScheduledHour}
+            onChange={e => setDefaultScheduledHour(Math.max(0, Math.min(23, Number(e.target.value))))}
+          />
+          <span className="me-2">:</span>
+          <input
+            type="number"
+            className="form-control me-2"
+            style={{ width: '6em' }}
+            min={0}
+            max={59}
+            value={defaultScheduledMinute}
+            onChange={e => setDefaultScheduledMinute(Math.max(0, Math.min(59, Number(e.target.value))))}
+          />
+          <span>(24-hour format, e.g. 18:00 for 6PM)</span>
+        </div>
       </div>
        <button className="btn btn-secondary me-2" onClick={exportJSON}>Download backup</button>
        <input type="file" accept="application/json" onChange={importJSON} style={{ display: 'none' }} id="import-file-input" />

@@ -28,7 +28,7 @@ export function getSteamCoverUrl(steamAppId: string | undefined): string | undef
   return `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${steamAppId}/header.jpg`;
 }
 
-import { Partner, Game, AskRecord } from '../types'; // Added import
+import { Partner, Game } from '../types'; // Added import
 
 export interface PartnerGameStates {
   plannedStreams: Game[];

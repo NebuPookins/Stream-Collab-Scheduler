@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Game, Store, DateFormatOption } from '../types';
+import { Game, Store } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
 import { formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
+import { sortUnmetGames } from '../helpers/gameSorters';
 
 interface GamesListProps {
   store: Store;
@@ -29,24 +30,6 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
   const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
   
-  // Sort unmet games by effective deadline, with fallback to ask count
-  const sortUnmetGames = (games: Game[]): Game[] => {
-    const filtered = games.filter(g => !g.trashed);
-    
-    const gamesWithEffectiveDeadline = filtered.filter(g => getEffectiveDeadline(g));
-    const gamesWithoutEffectiveDeadline = filtered.filter(g => !getEffectiveDeadline(g));
-
-    gamesWithEffectiveDeadline.sort((a, b) => {
-      const t1 = getEffectiveDeadline(a)?.getTime() ?? Infinity;
-      const t2 = getEffectiveDeadline(b)?.getTime() ?? Infinity;
-      return t1 - t2;
-    });
-
-    gamesWithoutEffectiveDeadline.sort((a, b) => b.asks.length - a.asks.length);
-
-    return [...gamesWithEffectiveDeadline, ...gamesWithoutEffectiveDeadline];
-  };
-
   const sortedUnmetGames = sortUnmetGames(unmet);
 
   const addGame = () => {

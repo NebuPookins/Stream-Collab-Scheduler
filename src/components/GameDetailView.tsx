@@ -378,11 +378,8 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       <div className="row mb-3">
         <label className={`col-sm-${labelBoostrapColumns} col-form-label`}>Scheduled Times</label>
         <div className={`col-sm-${fieldBootstrapColumns}`}>
-          <div className="mb-2">
-            <button className="btn btn-outline-primary btn-sm" onClick={addScheduledTime}>+ Add Scheduled Time</button>
-          </div>
           {scheduledTimes.length === 0 ? (
-            <p className="text-muted">No scheduled times added yet.</p>
+            <></>
           ) : (
             <div>
               {scheduledTimes.map((time, index) => (
@@ -401,12 +398,15 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                       onChange={(date) => updateScheduledTime(index, date || new Date())}
                       showTimeSelect
                       timeFormat="HH:mm"
-                      timeIntervals={1}
-                      dateFormat="MMMM d, yyyy h:mm aa"
+                      timeIntervals={60}
+                      dateFormat={getDatePickerFormat(store.settings.dateFormat) + ' h:mm aa'}
                       className="form-control me-2"
                     />
                   </div>
                   &nbsp;
+                  <span className="me-2" style={{ fontSize: '0.95em', minWidth: '2.5em', textAlign: 'center' }}>
+                    {time.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                  </span>
                   <code className="me-2" style={{ fontSize: '0.9em' }}>
                     {getDiscordTimestamp(time)}
                   </code>
@@ -417,6 +417,23 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               ))}
             </div>
           )}
+          {/* Always show an empty DatePicker for adding a new scheduled time */}
+          <div className="d-flex align-items-center mb-2">
+            <div style={{ width: 'auto' }}>
+              <DatePicker
+                selected={null}
+                onChange={(date) => {
+                  if (date) setScheduledTimes([...scheduledTimes, date]);
+                }}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={60}
+                dateFormat={getDatePickerFormat(store.settings.dateFormat) + ' h:mm aa'}
+                className="form-control me-2"
+                placeholderText="Add a scheduled time..."
+              />
+            </div>
+          </div>
         </div>
       </div>
 

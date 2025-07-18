@@ -3,11 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { saveStore } from '../storage';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Store, AskRecord, DateFormatOption, Game, Partner } from '../types';
+import { Store, AskRecord, Game, Partner } from '../types';
 import { getDatePickerFormat, formatDate, formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
 import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { isPartnerAvailable, getScheduleDescription } from '../helpers/scheduleParser';
+import { calculateLastStreamed } from '../helpers/partnerSorters';
 
 // Define interfaces for the combined event types
 interface EventBase {
@@ -63,6 +64,8 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
     setLovesTags(partner.lovesTags || []);
     setHatesTags(partner.hatesTags || []);
   }, [partner]);
+
+  const mostRecentStreamDate = React.useMemo(() => calculateLastStreamed(partner, store.games), [partner, store.games]);
 
   // useEffect for saving
   useEffect(() => {
@@ -220,7 +223,9 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
       </div>
       <div className="mb-3">
         <label className="form-label">Last Streamed With</label>
-        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
+        <DatePicker selected={lastStreamedWith} onChange={d=>setLastStreamedWith(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)}
+          placeholderText={mostRecentStreamDate ? formatDate(mostRecentStreamDate, store.settings.dateFormat) : undefined}
+        />
       </div>
       <div className="mb-3">
         <label className="form-label">Schedule</label>

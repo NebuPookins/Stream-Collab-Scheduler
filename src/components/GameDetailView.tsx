@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { formatDistanceToNow } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 import { Store, AskRecord, Partner } from '../types';
 import { saveStore } from '../storage';
 import { formatDate, getDatePickerFormat } from '../helpers/dateFormatter';
@@ -208,6 +209,36 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setDoneState(undefined);
   };
 
+  const handleScheduleAgain = () => {
+    // Create a clone of the current game with reset fields
+    const newGame = {
+      id: uuidv4(),
+      name: game.name,
+      storeUrl: game.storeUrl,
+      manualMetadata: game.manualMetadata,
+      tags: game.tags,
+      desiredPartners: game.desiredPartners,
+      notes: game.notes,
+      // Reset these fields
+      deadline: undefined,
+      scheduledTimes: [],
+      asks: [],
+      done: undefined,
+      trashed: false
+    };
+
+    // Add the new game to the store
+    const newStore = {
+      ...store,
+      games: [...store.games, newGame]
+    };
+    setStore(newStore);
+    saveStore(newStore);
+
+    // Navigate to the new game
+    navigate(`/games/${newGame.id}`);
+  };
+
   const addScheduledTime = () => {
     setScheduledTimes([...scheduledTimes, new Date()]);
   };
@@ -283,7 +314,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         <button className="btn btn-link" onClick={() => navigate(-1)}>Back</button>
         <div>
           {doneState ? (
-            <button className="btn btn-warning me-2" onClick={handleUnmarkAsDone}>Unmark Done</button>
+            <>
+              <button className="btn btn-warning me-2" onClick={handleUnmarkAsDone}>Unmark Done</button>
+              <button className="btn btn-primary me-2" onClick={handleScheduleAgain}>Schedule Again</button>
+            </>
           ) : (
             <button className="btn btn-success me-2" onClick={handleMarkAsDone}>Mark as Done</button>
           )}

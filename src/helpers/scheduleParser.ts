@@ -272,7 +272,7 @@ export class ScheduleEvaluator {
       case 'before':
         return currentTime < targetMinutes;
       case 'after':
-        return currentTime > targetMinutes;
+        return currentTime >= targetMinutes;
       case 'until':
         return currentTime <= targetMinutes;
       case 'from':

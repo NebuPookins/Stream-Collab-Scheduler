@@ -243,13 +243,14 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     setScheduledTimes([...scheduledTimes, new Date()]);
   };
 
-  const removeScheduledTime = (index: number) => {
-    setScheduledTimes(scheduledTimes.filter((_, i) => i !== index));
+  const removeScheduledTime = (dateToRemove: Date) => {
+    setScheduledTimes(scheduledTimes.filter(time => time.getTime() !== dateToRemove.getTime()));
   };
 
-  const updateScheduledTime = (index: number, newDate: Date) => {
-    const updatedTimes = [...scheduledTimes];
-    updatedTimes[index] = newDate;
+  const updateScheduledTime = (oldDate: Date, newDate: Date) => {
+    const updatedTimes = scheduledTimes.map(time => 
+      time.getTime() === oldDate.getTime() ? newDate : time
+    );
     setScheduledTimes(updatedTimes);
   };
 
@@ -265,7 +266,9 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       msg += `\n\nIt would be on ${getDiscordTimestamp(scheduledTimes[0])}.`;
     } else if (scheduledTimes.length > 1) {
       msg += `\n\nIt would be on one of the following dates:\n`;
-      msg += scheduledTimes.map(d => `- ${getDiscordTimestamp(d)}`).join('\n');
+      // Sort scheduledTimes before displaying
+      const sortedTimes = [...scheduledTimes].sort((a, b) => a.getTime() - b.getTime());
+      msg += sortedTimes.map(d => `- ${getDiscordTimestamp(d)}`).join('\n');
     }
     const lovedTags = (tags || []).filter(tag => partner.lovesTags?.includes(tag));
     const hatedTags = (tags || []).filter(tag => partner.hatesTags?.includes(tag));
@@ -416,11 +419,12 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             <></>
           ) : (
             <div>
-              {scheduledTimes.map((time, index) => (
+              {/* Sort scheduledTimes before rendering */}
+              {[...scheduledTimes].sort((a, b) => a.getTime() - b.getTime()).map((time, index) => (
                 <div key={index} className="d-flex align-items-center mb-2">
                   <button 
                     className="btn btn-outline-danger btn-sm" 
-                    onClick={() => removeScheduledTime(index)}
+                    onClick={() => removeScheduledTime(time)}
                     title="Remove scheduled time"
                   >
                     ×
@@ -429,7 +433,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                   <div style={{ width: 'auto' }}>
                     <DatePicker
                       selected={time}
-                      onChange={(date) => updateScheduledTime(index, date || new Date())}
+                      onChange={(date) => updateScheduledTime(time, date || new Date())}
                       showTimeSelect
                       timeFormat="HH:mm"
                       timeIntervals={60}
@@ -487,7 +491,18 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
 
       {doneState && doneState.date ? (
         <div>
-          <h3>Streamed with ({formatDate(new Date(doneState.date), store.settings.dateFormat)})</h3>
+          <h3>
+            Streamed with (
+            <DatePicker
+              selected={new Date(doneState.date)}
+              onChange={date => {
+                if (date) setDoneState({ ...doneState, date });
+              }}
+              className="form-control d-inline-block"
+              dateFormat={getDatePickerFormat(store.settings.dateFormat)}
+            />
+            )
+          </h3>
           <ul className="list-group mb-3">
             {asks.filter(a => a.confirmed).map(a => {
               const partner = store.partners.find(p => p.id === a.partnerId);

@@ -1,7 +1,13 @@
 export interface AskRecord {
   partnerId: string;
   askedOn: Date;
+  /**
+   * This is a bit of a misnomer; it's used as notes about the response, not the response itself.
+   */
   response?: string;
+  /**
+   * The partner's response. true = yes, false = no, null = no response yet.
+   */
   confirmed: boolean | null;
 }
 

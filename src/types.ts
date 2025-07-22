@@ -2,7 +2,7 @@ export interface AskRecord {
   partnerId: string;
   askedOn: Date;
   response?: string;
-  confirmed: boolean;
+  confirmed: boolean | null;
 }
 
 export interface Game {

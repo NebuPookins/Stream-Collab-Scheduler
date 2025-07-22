@@ -27,8 +27,8 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   doneGames.sort((a, b) => (b.done?.date.getTime() ?? 0) - (a.done?.date.getTime() ?? 0));
 
   // Split and sort not-done games
-  const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length >= g.desiredPartners);
-  const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed).length < g.desiredPartners);
+  const met = notDoneGames.filter(g => g.asks.filter(a => a.confirmed === true).length >= g.desiredPartners);
+  const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed === true).length < g.desiredPartners);
   
   const sortedUnmetGames = sortUnmetGames(unmet);
 
@@ -114,7 +114,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                 {formatScheduledTimes(g.scheduledTimes, store.settings.dateFormat)}
               </td>
               <td>
-                {g.asks.filter(a => a.confirmed).length}/{g.desiredPartners}
+                {g.asks.filter(a => a.confirmed === true).length}/{g.desiredPartners}
               </td>
               <td>
                 {(() => {
@@ -123,7 +123,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                     const askedDate = new Date(a.askedOn);
                     const diffTime = Math.abs(today.getTime() - askedDate.getTime());
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    return !a.confirmed && diffDays <= store.settings.greyThresholdDays && (!a.response || a.response.trim() === '');
+                    return (a.confirmed === null) && diffDays <= store.settings.greyThresholdDays;
                   }).length;
                   return recentAsks.toString();
                 })()}
@@ -172,7 +172,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
             </td>
             <td>
               {g.asks
-                .filter(ask => ask.confirmed)
+                .filter(ask => ask.confirmed === true)
                 .map((ask, index, arr) => {
                   const partner = store.partners.find(p => p.id === ask.partnerId);
                   return partner ? (
@@ -199,11 +199,6 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         </thead>
         <tbody>
         {doneGames.map(g => {
-          const confirmedPartners = g.asks
-            .filter(ask => ask.confirmed)
-            .map(ask => store.partners.find(p => p.id === ask.partnerId)?.name)
-            .filter(name => name !== undefined);
-
           return (
             <tr key={g.id}>
               <th scope="row">
@@ -230,7 +225,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
                 </td>
               <td>
                 {g.asks
-                  .filter(ask => ask.confirmed)
+                  .filter(ask => ask.confirmed === true)
                   .map((ask, index, arr) => {
                     const partner = store.partners.find(p => p.id === ask.partnerId);
                     return partner ? (

@@ -166,7 +166,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
 
   const askPartner = (pid: string) => {
-    const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: false, response: '' };
+    const newAsk: AskRecord = { partnerId: pid, askedOn: new Date(), confirmed: null, response: '' };
     const updatedAsks = [...asks, newAsk];
     setAsks(updatedAsks);
     // No direct setStore here, will be handled by useAutosave or immediateSave via memoizedSave
@@ -176,6 +176,16 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     const updatedAsks = asks.map((ask, i) => {
       if (i === index) {
         return { ...ask, [field]: value };
+      }
+      return ask;
+    });
+    setAsks(updatedAsks);
+  };
+
+  const handleConfirmationChange = (index: number, value: boolean | null) => {
+    const updatedAsks = asks.map((ask, i) => {
+      if (i === index) {
+        return { ...ask, confirmed: value };
       }
       return ask;
     });
@@ -239,9 +249,6 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
     navigate(`/games/${newGame.id}`);
   };
 
-  const addScheduledTime = () => {
-    setScheduledTimes([...scheduledTimes, new Date()]);
-  };
 
   const removeScheduledTime = (dateToRemove: Date) => {
     setScheduledTimes(scheduledTimes.filter(time => time.getTime() !== dateToRemove.getTime()));
@@ -504,7 +511,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
             )
           </h3>
           <ul className="list-group mb-3">
-            {asks.filter(a => a.confirmed).map(a => {
+            {asks.filter(a => a.confirmed === true).map(a => {
               const partner = store.partners.find(p => p.id === a.partnerId);
               return (
                 <li key={a.partnerId} className="list-group-item">
@@ -529,7 +536,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 <th>Partner</th>
                 <th>Asked on</th>
                 <th>Response</th>
-                <th>Confirmed</th>
+                <th>Status</th>
                 <th>Delete</th>
               </tr>
             </thead>
@@ -538,7 +545,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               const partner = store.partners.find(p=>p.id===a.partnerId);
               // Ensure askedOn is a Date object for DatePicker
               const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
-              const grey = !a.confirmed && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
+              const grey = (a.confirmed === null) && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
 
               const tagFeedback = partner && tags.length > 0 ? (
                 <>
@@ -583,13 +590,34 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                     />
                   </td>
                   <td>
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id={`confirmed-${index}`}
-                      checked={a.confirmed}
-                      onChange={(e) => handleAskChange(index, 'confirmed', e.target.checked)}
-                    />
+                    <div className="d-flex gap-2">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id={`thumbs-up-${index}`}
+                          checked={a.confirmed === true}
+                          onChange={(e) => handleConfirmationChange(index, e.target.checked ? true : null)}
+                          title="Partner confirmed yes"
+                        />
+                        <label className="form-check-label" htmlFor={`thumbs-up-${index}`}>
+                          👍
+                        </label>
+                      </div>
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id={`thumbs-down-${index}`}
+                          checked={a.confirmed === false}
+                          onChange={(e) => handleConfirmationChange(index, e.target.checked ? false : null)}
+                          title="Partner responded no"
+                        />
+                        <label className="form-check-label" htmlFor={`thumbs-down-${index}`}>
+                          👎
+                        </label>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <button className="btn btn-sm btn-danger" onClick={() => { deleteAsk(index); }}>Delete</button>

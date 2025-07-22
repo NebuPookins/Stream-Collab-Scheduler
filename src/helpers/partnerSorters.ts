@@ -10,7 +10,7 @@ export const calculateLastStreamed = (partner: Partner, games: Game[]): Date | u
 
   games.forEach(game => {
     if (game.done && game.done.date) {
-      const confirmedAsk = game.asks.find(ask => ask.partnerId === partner.id && ask.confirmed);
+      const confirmedAsk = game.asks.find(ask => ask.partnerId === partner.id && ask.confirmed === true);
       if (confirmedAsk) {
         dates.push(new Date(game.done.date));
       }

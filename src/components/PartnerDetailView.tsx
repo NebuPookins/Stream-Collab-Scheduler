@@ -120,9 +120,9 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
 
     // Add Game Done events
     nonTrashedGames.forEach(game => {
-      if (game.done && game.asks.some(a => a.partnerId === id && a.confirmed)) {
+      if (game.done && game.asks.some(a => a.partnerId === id && a.confirmed === true)) {
         const otherConfirmedPartners = store.partners.filter(p =>
-          p.id !== id && game.asks.some(a => a.partnerId === p.id && a.confirmed)
+          p.id !== id && game.asks.some(a => a.partnerId === p.id && a.confirmed === true)
         );
         events.push({
           type: 'done',
@@ -145,7 +145,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         if (game.done) {
           return false;
         }
-        const confirmedAsks = game.asks.filter(a => a.confirmed).length;
+        const confirmedAsks = game.asks.filter(a => a.confirmed === true).length;
         if (game.desiredPartners <= confirmedAsks) {
           return false;
         }
@@ -338,8 +338,8 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
                         <img src={event.game.manualMetadata.coverUrl} alt={event.game.name} style={{ maxWidth: '50px', marginLeft: '10px', float: 'right' }} />
                       )}
                     </p>
-                    <p className="mb-1">Response: {event.ask.response || 'No response yet'}</p>
-                    <p className="mb-1">Confirmed: {event.ask.confirmed ? 'Yes' : 'No'}</p>
+                    <p className="mb-1">Response: {event.ask.response || ''}</p>
+                    <p className="mb-1">Status: {event.ask.confirmed === true ? 'Confirmed Yes' : event.ask.confirmed === false ? 'Responded No' : 'No Response'}</p>
                   </div>
                 )}
                 {event.type === 'done' && (

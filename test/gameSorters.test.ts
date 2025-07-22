@@ -4,7 +4,7 @@ import { sortUnmetGames } from '../src/helpers/gameSorters';
 const createMockAskRecord = (): AskRecord => ({
   partnerId: '', // Using empty string for simplicity, adjust if needed
   askedOn: new Date(),
-  confirmed: false,
+  confirmed: null,
 });
 
 const createMockGame = (id: string, deadline?: Date, askCount: number = 0): Game => ({

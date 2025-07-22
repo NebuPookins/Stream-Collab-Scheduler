@@ -59,14 +59,16 @@ export function getPartnerGameStates(
     const partnerAsk = game.asks.find(ask => ask.partnerId === partner.id);
 
     if (partnerAsk) {
-      if (partnerAsk.confirmed) {
+      if (partnerAsk.confirmed === true) {
         plannedStreams.push(game);
+      } else if (partnerAsk.confirmed === false) {
+        //don't add to output.
       } else {
-        // Conditions for pendingAsks
-        const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed).length;
+        // Still waiting for a response.
+        const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed === true).length;
         const deadlinePassed = game.deadline && new Date(game.deadline) < now;
 
-        if (!gameHasAllNeededConfirmations && !deadlinePassed && (!partnerAsk.response || partnerAsk.response.trim() === '')) {
+        if (!gameHasAllNeededConfirmations && !deadlinePassed) {
           pendingAsks.push(game);
         }
       }

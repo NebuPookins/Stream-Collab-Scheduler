@@ -545,7 +545,19 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               const partner = store.partners.find(p=>p.id===a.partnerId);
               // Ensure askedOn is a Date object for DatePicker
               const askedOnDate = typeof a.askedOn === 'string' ? new Date(a.askedOn) : a.askedOn;
-              const grey = (a.confirmed === null) && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
+              const didntAnswer = (a.confirmed === null) && ((now.getTime() - askedOnDate.getTime())/(1000*60*60*24) > greyThreshold);
+              const confirmedNo = a.confirmed === false;
+              const confirmedYes = a.confirmed === true;
+
+              // Determine row highlighting based on confirmation status
+              let rowClassName = '';
+              if (confirmedNo) {
+                rowClassName = 'table-danger'; // Red for confirmed "no"
+              } else if (confirmedYes) {
+                rowClassName = 'table-success'; // Green for confirmed "yes"
+              } else if (didntAnswer) {
+                rowClassName = 'table-danger'; // Red for unanswered (existing behavior)
+              }
 
               const tagFeedback = partner && tags.length > 0 ? (
                 <>
@@ -562,7 +574,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
               ) : null;
 
               return (
-                <tr key={a.partnerId + index} className={`${grey?'table-danger':''}`}>
+                <tr key={a.partnerId + index} className={rowClassName}>
                   <th scope="row">
                     {partner ? <Link to={`/partners/${partner.id}`}>{partner.name}</Link> : 'Unknown Partner'}
                     {tagFeedback && <span className="ms-2">{tagFeedback}</span>}

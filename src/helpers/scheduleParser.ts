@@ -26,16 +26,6 @@ export class ScheduleParser {
     'weekend': -2, 'weekends': -2
   };
 
-  private static timeKeywords: { [key: string]: string } = {
-    'before': 'before',
-    'after': 'after',
-    'until': 'until',
-    'from': 'from',
-    'between': 'between',
-    'am': 'am',
-    'pm': 'pm'
-  };
-
   static parse(scheduleText: string): ScheduleRule | null {
     if (!scheduleText || scheduleText.trim() === '') {
       return null;
@@ -65,8 +55,9 @@ export class ScheduleParser {
       }
     }
 
-    // Handle "and" expressions
-    const andIndex = tokens.findIndex(token => token === 'and');
+    // Handle "and" expressions. The "and" in "between X and Y" is a range
+    // separator, not a conjunction, so it doesn't split the expression.
+    const andIndex = tokens.findIndex((token, i) => token === 'and' && tokens[i - 2] !== 'between');
     if (andIndex !== -1) {
       const leftTokens = tokens.slice(0, andIndex);
       const rightTokens = tokens.slice(andIndex + 1);
@@ -146,10 +137,13 @@ export class ScheduleParser {
     const parsedTime = this.parseTimeValue(timeValue);
     if (parsedTime === null) return null;
 
-    if (timeKeyword === 'between' && tokens[timeIndex + 2] === 'and') {
+    if (timeKeyword === 'between') {
+      // "between" requires a complete "between X and Y" phrase
+      if (tokens[timeIndex + 2] !== 'and') return null;
+
       const endTimeValue = tokens[timeIndex + 3];
       if (!endTimeValue) return null;
-      
+
       const endTime = this.parseTimeValue(endTimeValue);
       if (endTime === null) return null;
 
@@ -251,10 +245,9 @@ export class ScheduleEvaluator {
     if (!rule.value) return true;
 
     const currentTime = date.getHours() * 60 + date.getMinutes(); // minutes since midnight
-    const [operator, timeStr] = rule.value.split('-', 2);
-    
+    const [operator, startTime, endTime] = rule.value.split('-');
+
     if (operator === 'between') {
-      const [startTime, endTime] = timeStr.split('-');
       const startMinutes = this.timeStringToMinutes(startTime);
       const endMinutes = this.timeStringToMinutes(endTime);
       
@@ -266,8 +259,8 @@ export class ScheduleEvaluator {
       }
     }
 
-    const targetMinutes = this.timeStringToMinutes(timeStr);
-    
+    const targetMinutes = this.timeStringToMinutes(startTime);
+
     switch (operator) {
       case 'before':
         return currentTime < targetMinutes;
@@ -355,14 +348,13 @@ function describeDayRule(rule: ScheduleRule): string {
 function describeTimeRule(rule: ScheduleRule): string {
   if (!rule.value) return 'any time';
   
-  const [operator, timeStr] = rule.value.split('-', 2);
-  
+  const [operator, startTime, endTime] = rule.value.split('-');
+
   if (operator === 'between') {
-    const [startTime, endTime] = timeStr.split('-');
     return `between ${formatTimeForDisplay(startTime)} and ${formatTimeForDisplay(endTime)}`;
   }
-  
-  const timeDisplay = formatTimeForDisplay(timeStr);
+
+  const timeDisplay = formatTimeForDisplay(startTime);
   
   switch (operator) {
     case 'before':

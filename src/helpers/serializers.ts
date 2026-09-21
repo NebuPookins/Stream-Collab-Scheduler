@@ -1,3 +1,5 @@
+import { Store } from '../types';
+
 export function serialize(store: Store): string {
   return JSON.stringify(store, (_key, value) =>
     value instanceof Date ? value.toISOString() : value

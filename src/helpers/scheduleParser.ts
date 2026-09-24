@@ -46,15 +46,6 @@ export class ScheduleParser {
   private static parseTokens(tokens: string[]): ScheduleRule | null {
     if (tokens.length === 0) return null;
 
-    // Handle "not" expressions
-    if (tokens[0] === 'not') {
-      const remainingTokens = tokens.slice(1);
-      const innerRule = this.parseTokens(remainingTokens);
-      if (innerRule) {
-        return { type: 'not', rules: [innerRule] };
-      }
-    }
-
     // Handle "and" expressions. The "and" in "between X and Y" is a range
     // separator, not a conjunction, so it doesn't split the expression.
     const andIndex = tokens.findIndex((token, i) => token === 'and' && tokens[i - 2] !== 'between');
@@ -78,6 +69,13 @@ export class ScheduleParser {
       if (leftRule && rightRule) {
         return { type: 'or', rules: [leftRule, rightRule] };
       }
+    }
+
+    // Handle "not" expressions. This is checked after "and"/"or" so that "not"
+    // binds tightest: "not friday and after 9pm" means "(not friday) and after 9pm".
+    if (tokens[0] === 'not') {
+      const innerRule = this.parseTokens(tokens.slice(1));
+      return innerRule ? { type: 'not', rules: [innerRule] } : null;
     }
 
     // Handle day expressions

@@ -43,6 +43,22 @@ describe('isPartnerAvailable', () => {
     expect(isPartnerAvailable(schedule, new Date('2025-06-16T18:00:00'))).toBe(false);
   });
 
+  it('should apply a leading "not" only to its own operand of "and"', () => {
+    const schedule = 'not friday and after 9pm';
+    // 2025-06-16 is a Monday, 2025-06-20 is a Friday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T22:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T15:00:00'))).toBe(false);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-20T22:00:00'))).toBe(false);
+  });
+
+  it('should apply a leading "not" only to its own operand of "or"', () => {
+    const schedule = 'not weekdays or after 9pm';
+    // 2025-06-16 is a Monday, 2025-06-21 is a Saturday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-21T12:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T22:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T12:00:00'))).toBe(false);
+  });
+
   it('should treat an incomplete "between 9pm" as an invalid schedule', () => {
     // Unparseable schedules mean always available rather than crashing
     expect(isPartnerAvailable('between 9pm', new Date('2025-06-16T12:00:00'))).toBe(true);

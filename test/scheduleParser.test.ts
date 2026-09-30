@@ -59,6 +59,32 @@ describe('isPartnerAvailable', () => {
     expect(isPartnerAvailable(schedule, new Date('2025-06-16T12:00:00'))).toBe(false);
   });
 
+  it('should respect both the time range and the days in "9am-5pm weekdays"', () => {
+    const schedule = '9am-5pm weekdays';
+    // 2025-06-16 is a Monday, 2025-06-21 is a Saturday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T12:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T03:00:00'))).toBe(false);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-21T12:00:00'))).toBe(false);
+  });
+
+  it('should respect both the days and the time in "weekends after 9pm"', () => {
+    const schedule = 'weekends after 9pm';
+    // 2025-06-16 is a Monday, 2025-06-21 is a Saturday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-21T22:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-21T12:00:00'))).toBe(false);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T22:00:00'))).toBe(false);
+  });
+
+  it('should ignore "only" in "weekends only"', () => {
+    // 2025-06-16 is a Monday, 2025-06-21 is a Saturday
+    expect(isPartnerAvailable('weekends only', new Date('2025-06-21T12:00:00'))).toBe(true);
+    expect(isPartnerAvailable('weekends only', new Date('2025-06-16T12:00:00'))).toBe(false);
+  });
+
+  it('should treat a schedule with unrecognized words as invalid rather than ignoring them', () => {
+    expect(getScheduleDescription('friday lunchtime')).toBe('Invalid schedule format');
+  });
+
   it('should treat an incomplete "between 9pm" as an invalid schedule', () => {
     // Unparseable schedules mean always available rather than crashing
     expect(isPartnerAvailable('between 9pm', new Date('2025-06-16T12:00:00'))).toBe(true);
@@ -69,5 +95,12 @@ describe('isPartnerAvailable', () => {
 describe('getScheduleDescription', () => {
   it('should describe a "between" schedule with both times', () => {
     expect(getScheduleDescription('between 9pm and 11pm')).toBe('between 9 PM and 11 PM');
+  });
+
+  it('should describe a day-and-time schedule', () => {
+    expect(getScheduleDescription('9am - 5pm weekdays'))
+      .toBe('between 9 AM and 5 PM on Monday, Tuesday, Wednesday, Thursday, Friday');
+    expect(getScheduleDescription('after 9pm on friday')).toBe('after 9 PM on Friday');
+    expect(getScheduleDescription('after 9pm on fridays')).toBe('after 9 PM on Friday');
   });
 });

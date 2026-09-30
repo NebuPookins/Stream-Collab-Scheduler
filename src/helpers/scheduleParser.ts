@@ -15,13 +15,13 @@ export interface ScheduleRule {
 
 export class ScheduleParser {
   private static dayMap: { [key: string]: number } = {
-    'monday': 1, 'mon': 1,
-    'tuesday': 2, 'tue': 2, 'tues': 2,
-    'wednesday': 3, 'wed': 3,
-    'thursday': 4, 'thu': 4, 'thurs': 4,
-    'friday': 5, 'fri': 5,
-    'saturday': 6, 'sat': 6,
-    'sunday': 0, 'sun': 0,
+    'monday': 1, 'mondays': 1, 'mon': 1,
+    'tuesday': 2, 'tuesdays': 2, 'tue': 2, 'tues': 2,
+    'wednesday': 3, 'wednesdays': 3, 'wed': 3,
+    'thursday': 4, 'thursdays': 4, 'thu': 4, 'thurs': 4,
+    'friday': 5, 'fridays': 5, 'fri': 5,
+    'saturday': 6, 'saturdays': 6, 'sat': 6,
+    'sunday': 0, 'sundays': 0, 'sun': 0,
     'weekday': -1, 'weekdays': -1,
     'weekend': -2, 'weekends': -2
   };
@@ -35,12 +35,17 @@ export class ScheduleParser {
     return this.parseTokens(tokens);
   }
 
+  // Words that read naturally but carry no meaning, e.g. "weekends only" or
+  // "after 9pm on fridays".
+  private static fillerWords = new Set(['only', 'on']);
+
   private static tokenize(text: string): string[] {
-    // Split by commas, spaces, and other delimiters while preserving quoted strings
+    // Collapse spaces around "-" so "9am - 5pm" becomes the single range token
+    // "9am-5pm", then split by commas and whitespace.
     return text
+      .replace(/\s*-\s*/g, '-')
       .split(/[,\s]+/)
-      .map(token => token.trim())
-      .filter(token => token.length > 0);
+      .filter(token => token.length > 0 && !this.fillerWords.has(token));
   }
 
   private static parseTokens(tokens: string[]): ScheduleRule | null {
@@ -78,110 +83,70 @@ export class ScheduleParser {
       return innerRule ? { type: 'not', rules: [innerRule] } : null;
     }
 
-    // Handle day expressions
-    const dayRule = this.parseDayExpression(tokens);
-    if (dayRule) return dayRule;
-
-    // Handle time expressions
-    const timeRule = this.parseTimeExpression(tokens);
-    if (timeRule) return timeRule;
-
-    // Handle day-time combinations
-    const dayTimeRule = this.parseDayTimeExpression(tokens);
-    if (dayTimeRule) return dayTimeRule;
-
-    return null;
+    return this.parseDayTimeExpression(tokens);
   }
 
-  private static parseDayExpression(tokens: string[]): ScheduleRule | null {
-    const days: number[] = [];
-    
-    for (const token of tokens) {
-      if (token in this.dayMap) {
-        const dayValue = this.dayMap[token];
-        if (dayValue === -1) {
-          // weekdays
-          days.push(1, 2, 3, 4, 5);
-        } else if (dayValue === -2) {
-          // weekends
-          days.push(0, 6);
-        } else {
-          days.push(dayValue);
-        }
-      }
-    }
+  private static parseDayExpression(dayTokens: string[]): ScheduleRule {
+    const days = dayTokens.flatMap(token => {
+      const dayValue = this.dayMap[token];
+      if (dayValue === -1) return [1, 2, 3, 4, 5]; // weekdays
+      if (dayValue === -2) return [0, 6]; // weekends
+      return [dayValue];
+    });
 
-    if (days.length > 0) {
-      return { type: 'day', value: days.join(',') };
-    }
-
-    return null;
+    return { type: 'day', value: days.join(',') };
   }
 
+  /**
+   * Parses a complete time expression: "before|after|until|from <time>",
+   * "between <time> and <time>", or a range token like "9am-5pm". Returns null
+   * if any token is left unaccounted for.
+   */
   private static parseTimeExpression(tokens: string[]): ScheduleRule | null {
-    if (tokens.length < 2) return null;
+    const [keyword, first, and, second] = tokens;
 
-    const timeKeywords = ['before', 'after', 'until', 'from', 'between'];
-    const timeKeyword = tokens.find(token => timeKeywords.includes(token));
-    
-    if (!timeKeyword) return null;
-
-    const timeIndex = tokens.indexOf(timeKeyword);
-    const timeValue = tokens[timeIndex + 1];
-    
-    if (!timeValue) return null;
-
-    // Parse time value (e.g., "9pm", "5am", "14:30")
-    const parsedTime = this.parseTimeValue(timeValue);
-    if (parsedTime === null) return null;
-
-    if (timeKeyword === 'between') {
-      // "between" requires a complete "between X and Y" phrase
-      if (tokens[timeIndex + 2] !== 'and') return null;
-
-      const endTimeValue = tokens[timeIndex + 3];
-      if (!endTimeValue) return null;
-
-      const endTime = this.parseTimeValue(endTimeValue);
-      if (endTime === null) return null;
-
-      return {
-        type: 'time',
-        value: `between-${parsedTime}-${endTime}`
-      };
+    if (tokens.length === 1) {
+      const [start, end, ...rest] = keyword.split('-');
+      if (end === undefined || rest.length > 0) return null;
+      return this.betweenRule(start, end);
     }
 
-    return {
-      type: 'time',
-      value: `${timeKeyword}-${parsedTime}`
-    };
+    if (keyword === 'between') {
+      return tokens.length === 4 && and === 'and' ? this.betweenRule(first, second) : null;
+    }
+
+    if (tokens.length !== 2 || !['before', 'after', 'until', 'from'].includes(keyword)) {
+      return null;
+    }
+
+    const time = this.parseTimeValue(first);
+    return time === null ? null : { type: 'time', value: `${keyword}-${time}` };
   }
 
+  private static betweenRule(startText: string, endText: string): ScheduleRule | null {
+    const start = this.parseTimeValue(startText);
+    const end = this.parseTimeValue(endText);
+    return start === null || end === null ? null : { type: 'time', value: `between-${start}-${end}` };
+  }
+
+  /**
+   * Parses day names, a time expression, or both in either order, e.g.
+   * "weekends", "after 9pm", "9am-5pm weekdays" or "weekends after 9pm".
+   * Every token must be accounted for, so "friday after 9pm" doesn't silently
+   * drop "after 9pm".
+   */
   private static parseDayTimeExpression(tokens: string[]): ScheduleRule | null {
-    // Look for patterns like "9am-5pm weekdays" or "weekends after 9pm"
-    const timeRangeMatch = tokens.join(' ').match(/(\d{1,2}(?::\d{2})?(?:am|pm)?)\s*-\s*(\d{1,2}(?::\d{2})?(?:am|pm)?)/);
-    
-    if (timeRangeMatch) {
-      const startTime = this.parseTimeValue(timeRangeMatch[1]);
-      const endTime = this.parseTimeValue(timeRangeMatch[2]);
-      
-      if (startTime !== null && endTime !== null) {
-        const remainingTokens = tokens.filter(token => 
-          !timeRangeMatch[0].includes(token)
-        );
-        
-        const dayRule = this.parseDayExpression(remainingTokens);
-        if (dayRule) {
-          return {
-            type: 'dayTime',
-            value: `${startTime}-${endTime}`,
-            rules: [dayRule]
-          };
-        }
-      }
+    const dayTokens = tokens.filter(token => token in this.dayMap);
+    const timeTokens = tokens.filter(token => !(token in this.dayMap));
+
+    if (timeTokens.length === 0) {
+      return dayTokens.length === 0 ? null : this.parseDayExpression(dayTokens);
     }
 
-    return null;
+    const timeRule = this.parseTimeExpression(timeTokens);
+    if (!timeRule || dayTokens.length === 0) return timeRule;
+
+    return { type: 'dayTime', value: timeRule.value, rules: [this.parseDayExpression(dayTokens)] };
   }
 
   private static parseTimeValue(timeStr: string): string | null {

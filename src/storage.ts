@@ -1,46 +1,20 @@
 import { Store } from "./types";
-import { serialize, deserialize } from "./helpers/serializers";
+import { deserialize, reviveStoreDates, Revivable } from "./helpers/serializers";
 import { get, set } from "idb-keyval";
 
 const LOCAL_KEY = "streamCollabScheduler:data";
 
-// Helper function to check if a store object seems to need date revival
-function storeNeedsDateRevival(store: any): store is Store {
-  if (store && typeof store === 'object') {
-    if (store.partners && store.partners.length > 0) {
-      const partner = store.partners[0];
-      if (partner.lastStreamedWith && typeof partner.lastStreamedWith === 'string') return true;
-      if (partner.busyUntil && typeof partner.busyUntil === 'string') return true;
-    }
-    if (store.games && store.games.length > 0) {
-      const game = store.games[0];
-      if (game.deadline && typeof game.deadline === 'string') return true;
-      if (game.done && game.done.date && typeof game.done.date === 'string') return true;
-      if (game.asks && game.asks.length > 0) {
-        const ask = game.asks[0];
-        if (ask.askedOn && typeof ask.askedOn === 'string') return true;
-      }
-    }
-  }
-  return false;
-}
-
 export async function loadStore(): Promise<Store> {
-  const storedValue = await get(LOCAL_KEY) as Store | string | null;
+  const storedValue = await get<Revivable<Store> | string>(LOCAL_KEY);
 
   if (storedValue) {
     if (typeof storedValue === 'string') {
       // Data was stored as a JSON string (e.g., by a previous version of saveStore)
       return deserialize(storedValue);
     } else if (typeof storedValue === 'object' && storedValue !== null) {
-      // Data was stored as an object.
-      // Check if it needs date revival (e.g., from very old data or if structured cloning failed for some reason)
-      if (storeNeedsDateRevival(storedValue)) {
-        // Convert to JSON string (which handles Date.toJSON) then deserialize with our reviver
-        return deserialize(JSON.stringify(storedValue));
-      }
-      // Otherwise, assume idb-keyval's structured cloning handled Date objects correctly
-      return storedValue as Store;
+      // Data was stored as an object. idb-keyval's structured cloning normally
+      // preserves Dates, but older data may still hold them as strings.
+      return reviveStoreDates(storedValue);
     }
   }
   // Default empty store if nothing is found or type is unexpected

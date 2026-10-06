@@ -51,30 +51,16 @@ export class ScheduleParser {
   private static parseTokens(tokens: string[]): ScheduleRule | null {
     if (tokens.length === 0) return null;
 
-    // Handle "and" expressions. The "and" in "between X and Y" is a range
-    // separator, not a conjunction, so it doesn't split the expression.
-    const andIndex = tokens.findIndex((token, i) => token === 'and' && tokens[i - 2] !== 'between');
-    if (andIndex !== -1) {
-      const leftTokens = tokens.slice(0, andIndex);
-      const rightTokens = tokens.slice(andIndex + 1);
-      const leftRule = this.parseTokens(leftTokens);
-      const rightRule = this.parseTokens(rightTokens);
-      if (leftRule && rightRule) {
-        return { type: 'and', rules: [leftRule, rightRule] };
-      }
-    }
+    // Split on the loosest-binding operator first, so "or" < "and" < "not":
+    // "weekends or friday and after 9pm" means "weekends or (friday and after 9pm)".
+    const orRule = this.parseBinary(tokens, 'or', tokens.indexOf('or'));
+    if (orRule) return orRule;
 
-    // Handle "or" expressions
-    const orIndex = tokens.findIndex(token => token === 'or');
-    if (orIndex !== -1) {
-      const leftTokens = tokens.slice(0, orIndex);
-      const rightTokens = tokens.slice(orIndex + 1);
-      const leftRule = this.parseTokens(leftTokens);
-      const rightRule = this.parseTokens(rightTokens);
-      if (leftRule && rightRule) {
-        return { type: 'or', rules: [leftRule, rightRule] };
-      }
-    }
+    // The "and" in "between X and Y" is a range separator, not a conjunction,
+    // so it doesn't split the expression.
+    const andIndex = tokens.findIndex((token, i) => token === 'and' && tokens[i - 2] !== 'between');
+    const andRule = this.parseBinary(tokens, 'and', andIndex);
+    if (andRule) return andRule;
 
     // Handle "not" expressions. This is checked after "and"/"or" so that "not"
     // binds tightest: "not friday and after 9pm" means "(not friday) and after 9pm".
@@ -84,6 +70,18 @@ export class ScheduleParser {
     }
 
     return this.parseDayTimeExpression(tokens);
+  }
+
+  /**
+   * Parses `tokens` as `<left> <operator> <right>`, split at `index`. Returns
+   * null if there is no operator (index -1) or either side fails to parse.
+   */
+  private static parseBinary(tokens: string[], type: 'and' | 'or', index: number): ScheduleRule | null {
+    if (index === -1) return null;
+    const left = this.parseTokens(tokens.slice(0, index));
+    if (!left) return null;
+    const right = this.parseTokens(tokens.slice(index + 1));
+    return right ? { type, rules: [left, right] } : null;
   }
 
   private static parseDayExpression(dayTokens: string[]): ScheduleRule {

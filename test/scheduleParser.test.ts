@@ -59,6 +59,17 @@ describe('isPartnerAvailable', () => {
     expect(isPartnerAvailable(schedule, new Date('2025-06-16T12:00:00'))).toBe(false);
   });
 
+  it.each([
+    'weekends or friday and after 9pm',
+    'friday and after 9pm or weekends',
+  ])('should bind "and" tighter than "or" in "%s"', schedule => {
+    // 2025-06-20 is a Friday, 2025-06-21 is a Saturday, 2025-06-16 is a Monday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-21T12:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-20T22:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-20T12:00:00'))).toBe(false);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-16T22:00:00'))).toBe(false);
+  });
+
   it('should respect both the time range and the days in "9am-5pm weekdays"', () => {
     const schedule = '9am-5pm weekdays';
     // 2025-06-16 is a Monday, 2025-06-21 is a Saturday

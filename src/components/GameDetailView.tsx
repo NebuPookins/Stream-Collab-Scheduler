@@ -148,7 +148,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
   const partnersForConsideration = store.partners
     .filter(p => !askedIds.includes(p.id))
     .filter(p => !deadline || !p.busyUntil || new Date(p.busyUntil) <= deadline)
-    .map(p => {
+    .map((p): PartnerWithAvailability => {
       // Check if partner is available for any of the game's scheduled times
       let availableForScheduledTimes = true;
       if (scheduledTimes.length > 0) {
@@ -157,10 +157,10 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
         );
       }
       
-      return { ...p, availableForScheduledTimes } as PartnerWithAvailability;
+      return { ...p, availableForScheduledTimes };
     });
 
-  const availablePartners = sortPartners(partnersForConsideration, store.games, tags) as PartnerWithAvailability[];
+  const availablePartners = sortPartners(partnersForConsideration, store.games, tags);
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);

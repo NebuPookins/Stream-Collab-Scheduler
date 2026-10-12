@@ -1,110 +1,93 @@
 import { Partner, Game } from '../types';
 import { calculateGameScoreForPartner } from './tagUtils';
+import { isAskPending } from './storeUtils';
+
+const latestDate = (dates: Date[]): Date | undefined =>
+  dates.length > 0 ? new Date(Math.max(...dates.map(date => date.getTime()))) : undefined;
+
+const earliestDate = (dates: Date[]): Date | undefined =>
+  dates.length > 0 ? new Date(Math.min(...dates.map(date => date.getTime()))) : undefined;
 
 export const calculateLastStreamed = (partner: Partner, games: Game[]): Date | undefined => {
-  const dates: Date[] = [];
+  const gameDates = games
+    .filter(game => game.asks.some(ask => ask.partnerId === partner.id && ask.confirmed === true))
+    .flatMap(game => game.done?.date ? [new Date(game.done.date)] : []);
+  const knownDates = partner.lastStreamedWith ? [new Date(partner.lastStreamedWith)] : [];
 
-  if (partner.lastStreamedWith) {
-    dates.push(new Date(partner.lastStreamedWith));
-  }
-
-  games.forEach(game => {
-    if (game.done && game.done.date) {
-      const confirmedAsk = game.asks.find(ask => ask.partnerId === partner.id && ask.confirmed === true);
-      if (confirmedAsk) {
-        dates.push(new Date(game.done.date));
-      }
-    }
-  });
-
-  if (dates.length === 0) {
-    return undefined;
-  }
-
-  return new Date(Math.max(...dates.map(date => date.getTime())));
+  return latestDate([...knownDates, ...gameDates]);
 };
 
-export const findNextScheduledStream = (partner: Partner, games: Game[]): Date | undefined => {
-  const now = new Date();
-  const futureScheduledTimes: Date[] = [];
-
-  games.forEach(game => {
-    if (game.scheduledTimes) {
-      game.scheduledTimes.forEach(scheduledTime => {
-        if (scheduledTime > now) {
-          // Check if this partner is confirmed for this game
-          const confirmedAsk = game.asks.find(ask => ask.partnerId === partner.id && ask.confirmed === true);
-          if (confirmedAsk) {
-            futureScheduledTimes.push(new Date(scheduledTime));
-          }
-        }
-      });
-    }
-  });
-
-  if (futureScheduledTimes.length === 0) {
-    return undefined;
-  }
+export const findNextScheduledStream = (partner: Partner, games: Game[], now: Date): Date | undefined => {
+  const futureScheduledTimes = games
+    .filter(game => !game.trashed && !game.done)
+    .filter(game => game.asks.some(ask => ask.partnerId === partner.id && ask.confirmed === true))
+    .flatMap(game => game.scheduledTimes ?? [])
+    .filter(scheduledTime => scheduledTime > now)
+    .map(scheduledTime => new Date(scheduledTime));
 
   // Return the earliest future scheduled time
-  return new Date(Math.min(...futureScheduledTimes.map(date => date.getTime())));
+  return earliestDate(futureScheduledTimes);
 };
 
-export const sortPartners = (
-  partners: Partner[],
-  games: Game[], // Added games array
+export const findLatestOpenAsk = (partner: Partner, games: Game[], now: Date): Date | undefined => {
+  const openAskDates = games.flatMap(game =>
+    game.asks
+      .filter(ask => ask.partnerId === partner.id && isAskPending(game, ask, now))
+      .map(ask => new Date(ask.askedOn))
+  );
+
+  // Return the most recent open ask date
+  return latestDate(openAskDates);
+};
+
+/**
+ * Compares two optional dates: a missing date sorts before a present one,
+ * and two present dates are ordered by `compareBoth`.
+ */
+const compareOptionalDates = (
+  a: Date | undefined,
+  b: Date | undefined,
+  compareBoth: (a: Date, b: Date) => number
+): number => {
+  if (a && b) return compareBoth(a, b);
+  if (a) return 1;
+  if (b) return -1;
+  return 0;
+};
+
+export const sortPartners = <P extends Partner>(
+  partners: P[],
+  games: Game[],
   gameTags?: string[]
-): Partner[] => {
+): P[] => {
   const now = new Date();
 
-  return [...partners].sort((a, b) => {
-    // Primary sort: availability based on busyUntil
-    const aIsAvailable = !a.busyUntil || new Date(a.busyUntil) <= now;
-    const bIsAvailable = !b.busyUntil || new Date(b.busyUntil) <= now;
+  const decorated = partners.map(partner => ({
+    partner,
+    // Only partners still busy have a key; available ones sort first.
+    busyUntil: partner.busyUntil && new Date(partner.busyUntil) > now ? new Date(partner.busyUntil) : undefined,
+    gameScore: gameTags && gameTags.length > 0
+      ? calculateGameScoreForPartner(gameTags, partner.lovesTags, partner.hatesTags)
+      : 0,
+    nextStream: findNextScheduledStream(partner, games, now),
+    latestOpenAsk: findLatestOpenAsk(partner, games, now),
+    lastStreamed: calculateLastStreamed(partner, games),
+  }));
 
-    if (aIsAvailable && !bIsAvailable) return -1;
-    if (!aIsAvailable && bIsAvailable) return 1;
-
-    if (!aIsAvailable && !bIsAvailable && a.busyUntil && b.busyUntil) {
-      const busyUntilComparison = new Date(a.busyUntil).getTime() - new Date(b.busyUntil).getTime();
-      if (busyUntilComparison !== 0) return busyUntilComparison;
-    }
-
-    // Secondary sort: partners with planned streams go to the bottom, with streams furthest in the future first
-    const aNextStream = findNextScheduledStream(a, games);
-    const bNextStream = findNextScheduledStream(b, games);
-
-    // If one has a planned stream and the other doesn't, the one without goes first
-    if (aNextStream && !bNextStream) return 1;
-    if (!aNextStream && bNextStream) return -1;
-
-    // If both have planned streams, sort by stream date (furthest in future first)
-    if (aNextStream && bNextStream) {
-      const streamComparison = bNextStream.getTime() - aNextStream.getTime();
-      if (streamComparison !== 0) return streamComparison;
-    }
-
-    // Tertiary sort: game score (descending) - only if gameTags are provided
-    if (gameTags && gameTags.length > 0) {
-      const scoreA = calculateGameScoreForPartner(gameTags, a.lovesTags, a.hatesTags);
-      const scoreB = calculateGameScoreForPartner(gameTags, b.lovesTags, b.hatesTags);
-      if (scoreA !== scoreB) {
-        return scoreB - scoreA; // Higher score comes first
-      }
-    }
-
-    // Quaternary sort: by calculated last streamed ascending (earlier/never streamed comes first)
-    const lastStreamedA = calculateLastStreamed(a, games);
-    const lastStreamedB = calculateLastStreamed(b, games);
-
-    const timeA = lastStreamedA ? lastStreamedA.getTime() : 0; // Treat undefined as very old (0)
-    const timeB = lastStreamedB ? lastStreamedB.getTime() : 0; // Treat undefined as very old (0)
-
-    if (timeA !== timeB) {
-      return timeA - timeB; // Earlier date (smaller time value) comes first
-    }
-
-    // Fallback sort: by name, ascending
-    return a.name.localeCompare(b.name);
-  });
+  return decorated
+    .sort((a, b) =>
+      // Primary sort: available partners first, then by busyUntil ascending
+      compareOptionalDates(a.busyUntil, b.busyUntil, (aBusy, bBusy) => aBusy.getTime() - bBusy.getTime())
+      // Then: game score (descending) - always 0 if no gameTags are provided
+      || b.gameScore - a.gameScore
+      // Then: partners with planned streams go to the bottom, with streams furthest in the future first
+      || compareOptionalDates(a.nextStream, b.nextStream, (aNext, bNext) => bNext.getTime() - aNext.getTime())
+      // Then: partners without open asks first, then by most recent open ask date (earliest first)
+      || compareOptionalDates(a.latestOpenAsk, b.latestOpenAsk, (aAsk, bAsk) => aAsk.getTime() - bAsk.getTime())
+      // Then: by calculated last streamed ascending (earlier/never streamed comes first)
+      || compareOptionalDates(a.lastStreamed, b.lastStreamed, (aLast, bLast) => aLast.getTime() - bLast.getTime())
+      // Fallback sort: by name, ascending
+      || a.partner.name.localeCompare(b.partner.name)
+    )
+    .map(({ partner }) => partner);
 };

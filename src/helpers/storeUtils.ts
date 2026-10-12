@@ -28,11 +28,24 @@ export function getSteamCoverUrl(steamAppId: string | undefined): string | undef
   return `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${steamAppId}/header.jpg`;
 }
 
-import { Partner, Game } from '../types'; // Added import
+import { Partner, Game, AskRecord } from '../types'; // Added import
 
 export interface PartnerGameStates {
   plannedStreams: Game[];
   pendingAsks: Game[];
+}
+
+/**
+ * Whether an ask is still waiting for a response that could matter: the game is active,
+ * the partner hasn't answered, the game still needs partners, and the deadline hasn't passed.
+ */
+export function isAskPending(game: Game, ask: AskRecord, now: Date): boolean {
+  if (game.trashed || game.done || ask.confirmed !== null) {
+    return false;
+  }
+  const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed === true).length;
+  const deadlinePassed = game.deadline !== undefined && new Date(game.deadline) < now;
+  return !gameHasAllNeededConfirmations && !deadlinePassed;
 }
 
 export function getPartnerGameStates(
@@ -63,14 +76,8 @@ export function getPartnerGameStates(
         plannedStreams.push(game);
       } else if (partnerAsk.confirmed === false) {
         //don't add to output.
-      } else {
-        // Still waiting for a response.
-        const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed === true).length;
-        const deadlinePassed = game.deadline && new Date(game.deadline) < now;
-
-        if (!gameHasAllNeededConfirmations && !deadlinePassed) {
-          pendingAsks.push(game);
-        }
+      } else if (isAskPending(game, partnerAsk, now)) {
+        pendingAsks.push(game);
       }
     }
   }

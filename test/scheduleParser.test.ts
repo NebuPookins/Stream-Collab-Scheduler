@@ -86,6 +86,18 @@ describe('isPartnerAvailable', () => {
     expect(isPartnerAvailable(schedule, new Date('2025-06-16T22:00:00'))).toBe(false);
   });
 
+  it.each([
+    'after 9 pm',
+    'after 9:30 pm',
+    'between 9 pm and 11 pm',
+    '9 pm - 11 pm',
+    'friday after 9 pm',
+  ])('should accept a space before am/pm in "%s"', schedule => {
+    // 2025-06-20 is a Friday
+    expect(isPartnerAvailable(schedule, new Date('2025-06-20T22:00:00'))).toBe(true);
+    expect(isPartnerAvailable(schedule, new Date('2025-06-20T12:00:00'))).toBe(false);
+  });
+
   it('should ignore "only" in "weekends only"', () => {
     // 2025-06-16 is a Monday, 2025-06-21 is a Saturday
     expect(isPartnerAvailable('weekends only', new Date('2025-06-21T12:00:00'))).toBe(true);
@@ -113,5 +125,6 @@ describe('getScheduleDescription', () => {
       .toBe('between 9 AM and 5 PM on Monday, Tuesday, Wednesday, Thursday, Friday');
     expect(getScheduleDescription('after 9pm on friday')).toBe('after 9 PM on Friday');
     expect(getScheduleDescription('after 9pm on fridays')).toBe('after 9 PM on Friday');
+    expect(getScheduleDescription('after 9:30 pm on friday')).toBe('after 9:30 PM on Friday');
   });
 });

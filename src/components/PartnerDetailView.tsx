@@ -5,7 +5,7 @@ import { saveStore } from '../storage';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Store, AskRecord, Game, Partner } from '../types';
 import { getDatePickerFormat, formatDate, formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
-import { getAllUniqueTags, calculateGameScoreForPartner } from '../helpers/tagUtils';
+import { getAllUniqueTags, calculateGameScoreForPartner, getConflictingTags } from '../helpers/tagUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { isPartnerAvailable, getScheduleDescription } from '../helpers/scheduleParser';
 import { calculateLastStreamed } from '../helpers/partnerSorters';
@@ -50,6 +50,7 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
   const [newLovesTagInput, setNewLovesTagInput] = useState('');
   const [newHatesTagInput, setNewHatesTagInput] = useState('');
 
+  const conflictingTags = React.useMemo(() => getConflictingTags(lovesTags, hatesTags), [lovesTags, hatesTags]);
   const allStoreTags = React.useMemo(() => getAllUniqueTags(store), [store]);
 
   const initialLoadComplete = useRef(false);
@@ -255,6 +256,12 @@ const PartnerDetailView: React.FC<PartnerDetailProps> = ({ store, setStore }) =>
         <label className="form-label">Busy Until</label>
         <DatePicker selected={busyUntil} onChange={d=>setBusyUntil(d||undefined)} isClearable className="form-control" dateFormat={getDatePickerFormat(store.settings.dateFormat)} />
       </div>
+
+      {conflictingTags.length > 0 && (
+        <div className="alert alert-warning" role="alert">
+          Warning: these tags are in both Loves and Hates, so they cancel out when ranking games: {conflictingTags.join(', ')}
+        </div>
+      )}
 
       {/* Loves Tags */}
       <div className="mb-3">

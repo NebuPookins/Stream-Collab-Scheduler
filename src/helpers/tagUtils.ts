@@ -28,3 +28,11 @@ export const calculateGameScoreForPartner = (
   });
   return score;
 };
+
+export const getConflictingTags = (
+  lovesTags: string[] | undefined,
+  hatesTags: string[] | undefined
+): string[] => {
+  const hates = new Set(hatesTags ?? []);
+  return Array.from(new Set((lovesTags ?? []).filter(tag => hates.has(tag))));
+};

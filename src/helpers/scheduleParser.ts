@@ -41,9 +41,11 @@ export class ScheduleParser {
 
   private static tokenize(text: string): string[] {
     // Collapse spaces around "-" so "9am - 5pm" becomes the single range token
-    // "9am-5pm", then split by commas and whitespace.
+    // "9am-5pm", and before "am"/"pm" so "9 pm" becomes the time token "9pm",
+    // then split by commas and whitespace.
     return text
       .replace(/\s*-\s*/g, '-')
+      .replace(/(\d)\s+(am|pm)\b/g, '$1$2')
       .split(/[,\s]+/)
       .filter(token => token.length > 0 && !this.fillerWords.has(token));
   }
@@ -149,7 +151,7 @@ export class ScheduleParser {
 
   private static parseTimeValue(timeStr: string): string | null {
     // Handle formats like "9pm", "5am", "14:30", "9:30pm"
-    const timeMatch = timeStr.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+    const timeMatch = timeStr.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
     
     if (!timeMatch) return null;
 

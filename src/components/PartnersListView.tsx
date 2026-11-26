@@ -20,7 +20,7 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
   const filteredGames = store.games.filter(g => !g.trashed);
   // Sort partners using the new helper function.
   // No game-specific tags here, so gameTags argument is undefined.
-  const sortedPartners = sortPartners(store.partners, filteredGames); // Pass store.games
+  const sortedPartners = sortPartners(store.partners, filteredGames, store.settings.unansweredAskExpiryDays); // Pass store.games
 
   const filteredPartners = sortedPartners.filter(partner =>
     partner.name.toLowerCase().includes(filterText.toLowerCase())
@@ -72,7 +72,7 @@ const PartnersListView: React.FC<PartnersListProps> = ({ store, setStore }) => {
         <tbody>
           {filteredPartners.length > 0 ? (
             filteredPartners.map(p => {
-              const { plannedStreams, pendingAsks } = getPartnerGameStates(p, filteredGames);
+              const { plannedStreams, pendingAsks } = getPartnerGameStates(p, filteredGames, store.settings.unansweredAskExpiryDays);
               return (
                 <tr key={p.id}>
                   <th scope="row">

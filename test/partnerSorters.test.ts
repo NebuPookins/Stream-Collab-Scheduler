@@ -21,7 +21,7 @@ const game = (overrides: Partial<Game>): Game => ({
 });
 
 const sortedIds = (partners: Partner[], games: Game[]): string[] =>
-  sortPartners(partners, games).map(p => p.id);
+  sortPartners(partners, games, 10).map(p => p.id);
 
 describe('sortPartners', () => {
   it('puts partners with a planned stream after those without', () => {
@@ -76,7 +76,7 @@ describe('sortPartners', () => {
   });
 
   it('preserves the extra properties of the input partners', () => {
-    const result = sortPartners([{ ...partner('A'), extra: 42 }], []);
+    const result = sortPartners([{ ...partner('A'), extra: 42 }], [], 10);
     expect(result[0].extra).toBe(42);
   });
 });
@@ -85,11 +85,11 @@ describe('findLatestOpenAsk', () => {
   it('returns the most recent pending ask across re-asks', () => {
     const latest = daysFromNow(-1);
     const games = [game({ asks: [ask('A', null, daysFromNow(-9)), ask('A', null, latest)] })];
-    expect(findLatestOpenAsk(partner('A'), games, new Date())).toEqual(latest);
+    expect(findLatestOpenAsk(partner('A'), games, new Date(), 10)).toEqual(latest);
   });
 
   it('returns undefined when the only ask is past its deadline', () => {
     const games = [game({ deadline: daysFromNow(-1), asks: [ask('A', null)] })];
-    expect(findLatestOpenAsk(partner('A'), games, new Date())).toBeUndefined();
+    expect(findLatestOpenAsk(partner('A'), games, new Date(), 10)).toBeUndefined();
   });
 });

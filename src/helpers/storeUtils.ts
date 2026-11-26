@@ -35,51 +35,51 @@ export interface PartnerGameStates {
   pendingAsks: Game[];
 }
 
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Whether an ask is still waiting for a response that could matter: the game is active,
- * the partner hasn't answered, the game still needs partners, and the deadline hasn't passed.
+ * the partner hasn't answered, the game still needs partners, the deadline hasn't passed,
+ * and the ask was made within the last `unansweredAskExpiryDays` days. An ask with an
+ * invalid askedOn date is treated as expired.
  */
-export function isAskPending(game: Game, ask: AskRecord, now: Date): boolean {
+export function isAskPending(game: Game, ask: AskRecord, now: Date, unansweredAskExpiryDays: number): boolean {
   if (game.trashed || game.done || ask.confirmed !== null) {
     return false;
   }
   const gameHasAllNeededConfirmations = game.desiredPartners <= game.asks.filter(a => a.confirmed === true).length;
   const deadlinePassed = game.deadline !== undefined && new Date(game.deadline) < now;
-  return !gameHasAllNeededConfirmations && !deadlinePassed;
+  const askedOnMs = new Date(ask.askedOn).getTime();
+  if (Number.isNaN(askedOnMs)) {
+    console.warn('isAskPending: ask has an invalid askedOn date; treating it as expired', {
+      gameId: game.id,
+      gameName: game.name,
+      partnerId: ask.partnerId,
+      askedOn: ask.askedOn,
+    });
+  }
+  const askExpired = Number.isNaN(askedOnMs) || now.getTime() - askedOnMs > unansweredAskExpiryDays * DAY_MS;
+  return !gameHasAllNeededConfirmations && !deadlinePassed && !askExpired;
 }
 
 export function getPartnerGameStates(
   partner: Partner,
   allGames: Game[],
-  excludeGameId?: string
+  unansweredAskExpiryDays: number,
+  excludeGameId?: string,
+  now: Date = new Date()
 ): PartnerGameStates {
-  const plannedStreams: Game[] = [];
-  const pendingAsks: Game[] = [];
-  const now = new Date();
+  const partnerAsks = allGames
+    .filter(game => !game.trashed && !game.done && game.id !== excludeGameId)
+    .flatMap(game => {
+      const ask = game.asks.find(a => a.partnerId === partner.id);
+      return ask ? [{ game, ask }] : [];
+    });
 
-  for (const game of allGames) {
-    if (game.trashed) {
-      continue;
-    }
-    if (game.id === excludeGameId) {
-      continue;
-    }
-
-    if (game.done) {
-      continue;
-    }
-
-    const partnerAsk = game.asks.find(ask => ask.partnerId === partner.id);
-
-    if (partnerAsk) {
-      if (partnerAsk.confirmed === true) {
-        plannedStreams.push(game);
-      } else if (partnerAsk.confirmed === false) {
-        //don't add to output.
-      } else if (isAskPending(game, partnerAsk, now)) {
-        pendingAsks.push(game);
-      }
-    }
-  }
-  return { plannedStreams, pendingAsks };
+  return {
+    plannedStreams: partnerAsks.filter(({ ask }) => ask.confirmed === true).map(({ game }) => game),
+    pendingAsks: partnerAsks
+      .filter(({ game, ask }) => isAskPending(game, ask, now, unansweredAskExpiryDays))
+      .map(({ game }) => game),
+  };
 }

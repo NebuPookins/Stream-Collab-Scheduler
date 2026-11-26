@@ -44,6 +44,10 @@ export type DateFormatOption = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "Mon
 
 export interface Settings {
   greyThresholdDays: number;
+  /**
+   * An unanswered ask older than this many days is treated as an implicit "no".
+   */
+  unansweredAskExpiryDays: number;
   dateFormat: DateFormatOption;
   darkMode?: boolean;
   /**

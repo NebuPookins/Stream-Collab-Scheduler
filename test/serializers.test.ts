@@ -28,7 +28,7 @@ const createStore = (): Store => ({
     busyUntil: new Date('2025-09-01T00:00:00.000Z'),
     schedule: timestampLike,
   }],
-  settings: { greyThresholdDays: 3, dateFormat: 'YYYY-MM-DD' },
+  settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, dateFormat: 'YYYY-MM-DD' },
 });
 
 describe('deserialize', () => {
@@ -55,7 +55,7 @@ describe('deserialize', () => {
     const store: Store = {
       games: [{ id: 'g', name: 'Game', desiredPartners: 1, asks: [] }],
       partners: [{ id: 'p', name: 'Partner' }],
-      settings: { greyThresholdDays: 3, dateFormat: 'YYYY-MM-DD' },
+      settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, dateFormat: 'YYYY-MM-DD' },
     };
     const { games: [game], partners: [partner] } = deserialize(serialize(store));
     expect(game.deadline).toBeUndefined();
@@ -70,5 +70,16 @@ describe('reviveStoreDates', () => {
   it('accepts a store whose dates are already Dates', () => {
     const store = createStore();
     expect(reviveStoreDates(store)).toEqual(store);
+  });
+
+  it('defaults the unanswered-ask expiry for data saved before the setting existed', () => {
+    const { settings: { unansweredAskExpiryDays: _omitted, ...oldSettings }, ...rest } = createStore();
+    expect(reviveStoreDates({ ...rest, settings: oldSettings }).settings.unansweredAskExpiryDays).toBe(10);
+  });
+
+  it('keeps a saved unanswered-ask expiry', () => {
+    const store = createStore();
+    const saved = { ...store, settings: { ...store.settings, unansweredAskExpiryDays: 4 } };
+    expect(reviveStoreDates(saved).settings.unansweredAskExpiryDays).toBe(4);
   });
 });

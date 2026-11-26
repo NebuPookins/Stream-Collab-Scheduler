@@ -160,7 +160,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
       return { ...p, availableForScheduledTimes };
     });
 
-  const availablePartners = sortPartners(partnersForConsideration, store.games, tags);
+  const availablePartners = sortPartners(partnersForConsideration, store.games, store.settings.unansweredAskExpiryDays, tags);
 
   const busyPartners = store.partners
     .filter(p => !askedIds.includes(p.id) && deadline && p.busyUntil && new Date(p.busyUntil) > deadline);
@@ -678,7 +678,7 @@ const GameDetailView: React.FC<GameDetailProps> = ({ store, setStore }) => {
                 </div>
                 <div>
                 {(() => {
-                  const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games, game.id);
+                  const { plannedStreams, pendingAsks } = getPartnerGameStates(p, store.games, store.settings.unansweredAskExpiryDays, game.id);
 
                   const formatGameLinks = (games: { id: string, name: string }[]) => {
                     return games.map((g, index) => (

@@ -8,6 +8,7 @@ interface SettingsProps { store: Store; setStore: React.Dispatch<React.SetStateA
 
 const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   const [greyDays, setGreyDays] = useState(store.settings.greyThresholdDays);
+  const [unansweredExpiryDays, setUnansweredExpiryDays] = useState(store.settings.unansweredAskExpiryDays);
   const [darkMode, setDarkMode] = useState(store.settings.darkMode);
   const [dateFormat, setDateFormat] = useState<DateFormatOption>(store.settings.dateFormat);
   const [defaultScheduledHour, setDefaultScheduledHour] = useState(store.settings.defaultScheduledHour ?? 18);
@@ -19,6 +20,7 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
   useEffect(() => {
     initialLoadComplete.current = false;
     setGreyDays(store.settings.greyThresholdDays);
+    setUnansweredExpiryDays(store.settings.unansweredAskExpiryDays);
     setDarkMode(store.settings.darkMode);
     setDateFormat(store.settings.dateFormat);
     setDefaultScheduledHour(store.settings.defaultScheduledHour ?? 18);
@@ -30,6 +32,7 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     if (!initialLoadComplete.current) {
       // Heuristic to wait for state sync from props
       if (greyDays === store.settings.greyThresholdDays &&
+          unansweredExpiryDays === store.settings.unansweredAskExpiryDays &&
           darkMode === store.settings.darkMode && dateFormat === store.settings.dateFormat &&
           defaultScheduledHour === (store.settings.defaultScheduledHour ?? 18) &&
           defaultScheduledMinute === (store.settings.defaultScheduledMinute ?? 0)) {
@@ -40,6 +43,7 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
 
     const newSettings = { 
       greyThresholdDays: greyDays, 
+      unansweredAskExpiryDays: unansweredExpiryDays,
       darkMode, 
       dateFormat,
       defaultScheduledHour,
@@ -48,7 +52,7 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
     const newStore = { ...store, settings: newSettings };
     setStore(newStore);
     saveStore(newStore);
-  }, [greyDays, darkMode, dateFormat, defaultScheduledHour, defaultScheduledMinute, store, setStore]);
+  }, [greyDays, unansweredExpiryDays, darkMode, dateFormat, defaultScheduledHour, defaultScheduledMinute, store, setStore]);
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
@@ -83,6 +87,10 @@ const SettingsView: React.FC<SettingsProps> = ({ store, setStore }) => {
       <div className="mb-3">
         <label>Grey threshold (days)</label>
         <input type="number" className="form-control" value={greyDays} onChange={e => setGreyDays(+e.target.value)} />
+      </div>
+      <div className="mb-3">
+        <label>Treat unanswered asks as declined after (days)</label>
+        <input type="number" className="form-control" min={1} value={unansweredExpiryDays} onChange={e => setUnansweredExpiryDays(Math.max(1, Math.floor(+e.target.value) || 1))} />
       </div>
       <div className="form-check form-switch mb-3">
         <input className="form-check-input" type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />

@@ -29,10 +29,10 @@ export const findNextScheduledStream = (partner: Partner, games: Game[], now: Da
   return earliestDate(futureScheduledTimes);
 };
 
-export const findLatestOpenAsk = (partner: Partner, games: Game[], now: Date): Date | undefined => {
+export const findLatestOpenAsk = (partner: Partner, games: Game[], now: Date, unansweredAskExpiryDays: number): Date | undefined => {
   const openAskDates = games.flatMap(game =>
     game.asks
-      .filter(ask => ask.partnerId === partner.id && isAskPending(game, ask, now))
+      .filter(ask => ask.partnerId === partner.id && isAskPending(game, ask, now, unansweredAskExpiryDays))
       .map(ask => new Date(ask.askedOn))
   );
 
@@ -58,6 +58,7 @@ const compareOptionalDates = (
 export const sortPartners = <P extends Partner>(
   partners: P[],
   games: Game[],
+  unansweredAskExpiryDays: number,
   gameTags?: string[]
 ): P[] => {
   const now = new Date();
@@ -70,7 +71,7 @@ export const sortPartners = <P extends Partner>(
       ? calculateGameScoreForPartner(gameTags, partner.lovesTags, partner.hatesTags)
       : 0,
     nextStream: findNextScheduledStream(partner, games, now),
-    latestOpenAsk: findLatestOpenAsk(partner, games, now),
+    latestOpenAsk: findLatestOpenAsk(partner, games, now, unansweredAskExpiryDays),
     lastStreamed: calculateLastStreamed(partner, games),
   }));
 

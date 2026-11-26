@@ -1,4 +1,4 @@
-import { Store, Game, Partner, AskRecord } from '../types';
+import { Store, Game, Partner, AskRecord, Settings } from '../types';
 
 /**
  * A value as it may come out of storage or a backup file: every Date may still
@@ -9,6 +9,18 @@ export type Revivable<T> =
   T extends (infer U)[] ? Revivable<U>[] :
   T extends object ? { [K in keyof T]: Revivable<T[K]> } :
   T;
+
+export const DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS = 10;
+
+/**
+ * A Store as it may come out of storage or a backup file: dates may be strings,
+ * and settings added in later versions may be missing.
+ */
+export type StoredStore = Revivable<
+  Omit<Store, 'settings'> & {
+    settings: Omit<Settings, 'unansweredAskExpiryDays'> & Partial<Pick<Settings, 'unansweredAskExpiryDays'>>;
+  }
+>;
 
 const toDate = (value: Date | string): Date => new Date(value);
 
@@ -39,10 +51,14 @@ const revivePartner = (partner: Revivable<Partner>): Partner => ({
  * Converts the Store's date fields back into Dates. Only those fields are
  * touched, so user-entered text that merely looks like a timestamp (a game
  * name, notes, metadata...) stays a string. Fields that are already Dates are
- * copied unchanged.
+ * copied unchanged. Settings missing from older data get their defaults.
  */
-export const reviveStoreDates = (store: Revivable<Store>): Store => ({
+export const reviveStoreDates = (store: StoredStore): Store => ({
   ...store,
+  settings: {
+    ...store.settings,
+    unansweredAskExpiryDays: store.settings.unansweredAskExpiryDays ?? DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS,
+  },
   games: store.games.map(reviveGame),
   partners: store.partners.map(revivePartner),
 });

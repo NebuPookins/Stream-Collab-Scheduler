@@ -11,6 +11,10 @@ export type Revivable<T> =
   T;
 
 export const DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS = 10;
+export const DEFAULT_DEADLINE_WARNING_DAYS = 30;
+
+/** Settings that data saved by older versions may lack. */
+type LaterSettingKey = 'unansweredAskExpiryDays' | 'deadlineWarningDays';
 
 /**
  * A Store as it may come out of storage or a backup file: dates may be strings,
@@ -18,7 +22,7 @@ export const DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS = 10;
  */
 export type StoredStore = Revivable<
   Omit<Store, 'settings'> & {
-    settings: Omit<Settings, 'unansweredAskExpiryDays'> & Partial<Pick<Settings, 'unansweredAskExpiryDays'>>;
+    settings: Omit<Settings, LaterSettingKey> & Partial<Pick<Settings, LaterSettingKey>>;
   }
 >;
 
@@ -58,6 +62,7 @@ export const reviveStoreDates = (store: StoredStore): Store => ({
   settings: {
     ...store.settings,
     unansweredAskExpiryDays: store.settings.unansweredAskExpiryDays ?? DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS,
+    deadlineWarningDays: store.settings.deadlineWarningDays ?? DEFAULT_DEADLINE_WARNING_DAYS,
   },
   games: store.games.map(reviveGame),
   partners: store.partners.map(revivePartner),

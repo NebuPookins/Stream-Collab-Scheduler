@@ -48,6 +48,11 @@ export interface Settings {
    * An unanswered ask older than this many days is treated as an implicit "no".
    */
   unansweredAskExpiryDays: number;
+  /**
+   * Games still needing partners whose effective deadline is less than this many
+   * days away (or already passed) are highlighted in the games list.
+   */
+  deadlineWarningDays: number;
   dateFormat: DateFormatOption;
   darkMode?: boolean;
   /**

@@ -1,5 +1,5 @@
 import { Store } from "./types";
-import { deserialize, reviveStoreDates, StoredStore, DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS } from "./helpers/serializers";
+import { deserialize, reviveStoreDates, StoredStore, DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS, DEFAULT_DEADLINE_WARNING_DAYS } from "./helpers/serializers";
 import { get, set } from "idb-keyval";
 
 const LOCAL_KEY = "streamCollabScheduler:data";
@@ -18,7 +18,7 @@ export async function loadStore(): Promise<Store> {
     }
   }
   // Default empty store if nothing is found or type is unexpected
-  return { games: [], partners: [], settings: { greyThresholdDays: 3, unansweredAskExpiryDays: DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS, darkMode: false, dateFormat: "YYYY-MM-DD", defaultScheduledHour: 18, defaultScheduledMinute: 0 } };
+  return { games: [], partners: [], settings: { greyThresholdDays: 3, unansweredAskExpiryDays: DEFAULT_UNANSWERED_ASK_EXPIRY_DAYS, deadlineWarningDays: DEFAULT_DEADLINE_WARNING_DAYS, darkMode: false, dateFormat: "YYYY-MM-DD", defaultScheduledHour: 18, defaultScheduledMinute: 0 } };
 }
 
 export async function saveStore(store: Store): Promise<void> {

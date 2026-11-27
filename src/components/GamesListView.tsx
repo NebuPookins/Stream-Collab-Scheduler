@@ -5,7 +5,7 @@ import { Game, Store } from '../types';
 import { formatDate } from '../helpers/dateFormatter';
 import { formatDistanceToNow } from 'date-fns';
 import { getSteamAppIdFromUrl, getSteamCoverUrl } from '../helpers/storeUtils';
-import { formatScheduledTimes, getEffectiveDeadline } from '../helpers/dateFormatter';
+import { formatScheduledTimes, getEffectiveDeadline, isDeadlineApproaching } from '../helpers/dateFormatter';
 import { sortUnmetGames } from '../helpers/gameSorters';
 
 interface GamesListProps {
@@ -31,6 +31,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
   const unmet = notDoneGames.filter(g => g.asks.filter(a => a.confirmed === true).length < g.desiredPartners);
   
   const sortedUnmetGames = sortUnmetGames(unmet);
+  const now = new Date();
 
   const addGame = () => {
     const newGame: Game = {
@@ -86,7 +87,7 @@ const GamesListView: React.FC<GamesListProps> = ({ store, setStore }) => {
         </thead>
         <tbody>
           {sortedUnmetGames.map(g => (
-            <tr key={g.id}>
+            <tr key={g.id} className={isDeadlineApproaching(g, now, store.settings.deadlineWarningDays) ? 'table-danger' : undefined}>
               <th scope="row">
                 <Link to={`/games/${g.id}`}>
                   {(() => {

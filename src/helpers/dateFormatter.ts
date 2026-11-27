@@ -1,5 +1,6 @@
 import { DateFormatOption } from '../types';
 import { formatDistanceToNow } from 'date-fns';
+import { DAY_MS } from './storeUtils';
 
 export function formatDate(date: Date, format: DateFormatOption): string {
   const year = date.getFullYear();
@@ -56,4 +57,19 @@ export function getEffectiveDeadline(game: { deadline?: Date; scheduledTimes?: D
   const maxScheduledDate = new Date(Math.max(...scheduledTimes.map(d => d.getTime())));
   if (!deadline) return maxScheduledDate;
   return deadline < maxScheduledDate ? deadline : maxScheduledDate;
+}
+
+
+/**
+ * Whether the game's effective deadline is less than `warningDays` days after `now`,
+ * including deadlines that have already passed. A game with no effective deadline
+ * is never approaching.
+ */
+export function isDeadlineApproaching(
+  game: { deadline?: Date; scheduledTimes?: Date[] },
+  now: Date,
+  warningDays: number,
+): boolean {
+  const effectiveDeadline = getEffectiveDeadline(game);
+  return effectiveDeadline !== undefined && effectiveDeadline.getTime() - now.getTime() < warningDays * DAY_MS;
 }

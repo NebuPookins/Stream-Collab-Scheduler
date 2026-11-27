@@ -28,7 +28,7 @@ const createStore = (): Store => ({
     busyUntil: new Date('2025-09-01T00:00:00.000Z'),
     schedule: timestampLike,
   }],
-  settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, dateFormat: 'YYYY-MM-DD' },
+  settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, deadlineWarningDays: 30, dateFormat: 'YYYY-MM-DD' },
 });
 
 describe('deserialize', () => {
@@ -55,7 +55,7 @@ describe('deserialize', () => {
     const store: Store = {
       games: [{ id: 'g', name: 'Game', desiredPartners: 1, asks: [] }],
       partners: [{ id: 'p', name: 'Partner' }],
-      settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, dateFormat: 'YYYY-MM-DD' },
+      settings: { greyThresholdDays: 3, unansweredAskExpiryDays: 10, deadlineWarningDays: 30, dateFormat: 'YYYY-MM-DD' },
     };
     const { games: [game], partners: [partner] } = deserialize(serialize(store));
     expect(game.deadline).toBeUndefined();
@@ -81,5 +81,16 @@ describe('reviveStoreDates', () => {
     const store = createStore();
     const saved = { ...store, settings: { ...store.settings, unansweredAskExpiryDays: 4 } };
     expect(reviveStoreDates(saved).settings.unansweredAskExpiryDays).toBe(4);
+  });
+
+  it('defaults the deadline warning for data saved before the setting existed', () => {
+    const { settings: { deadlineWarningDays: _omitted, ...oldSettings }, ...rest } = createStore();
+    expect(reviveStoreDates({ ...rest, settings: oldSettings }).settings.deadlineWarningDays).toBe(30);
+  });
+
+  it('keeps a saved deadline warning', () => {
+    const store = createStore();
+    const saved = { ...store, settings: { ...store.settings, deadlineWarningDays: 7 } };
+    expect(reviveStoreDates(saved).settings.deadlineWarningDays).toBe(7);
   });
 });
